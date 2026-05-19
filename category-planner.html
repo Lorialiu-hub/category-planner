@@ -1,0 +1,1456 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>餐饮品类52周活动排期表</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    :root {
+      --bg: #eef0f5; --surface: #fff;
+      --border: rgba(0,0,0,0.13); --text: #111827;
+      --text-dim: rgba(0,0,0,0.52); --text-mid: rgba(0,0,0,0.72);
+      --c-milk:#b5004e; --c-coffee:#c43d00; --c-meal:#005f9e;
+      --c-snack:#1b5e20; --c-dessert:#4a0072; --c-supper:#8d1a00;
+    }
+    body { min-height:100vh; background:var(--bg); font-family:'PingFang SC','Microsoft YaHei',sans-serif; color:var(--text); }
+    #stars-canvas { display:none; }
+    .page { position:relative; z-index:1; max-width:1100px; margin:0 auto; padding:40px 20px 80px; }
+
+    /* 头部 */
+    .header { text-align:center; margin-bottom:28px; }
+    .header h1 { font-size:1.7rem; font-weight:700; letter-spacing:0.06em; margin-bottom:8px; }
+    .header .desc { font-size:0.8rem; color:var(--text-mid); line-height:1.85; max-width:620px; margin:0 auto; }
+    .header .desc strong { color:var(--text); font-weight:600; }
+
+    /* 控制栏 */
+    .control-bar { display:flex; flex-wrap:wrap; gap:10px; align-items:center; justify-content:space-between; margin-bottom:20px; }
+    .region-tabs { display:flex; gap:6px; flex-wrap:wrap; }
+    .region-tab { padding:5px 14px; border-radius:20px; border:1px solid var(--border); background:var(--surface); color:var(--text-mid); font-size:0.76rem; font-family:inherit; cursor:pointer; transition:all 0.18s; }
+    .region-tab.active { border-color:rgba(0,0,0,0.3); background:#fff; color:var(--text); font-weight:600; box-shadow:0 1px 4px rgba(0,0,0,0.12); }
+    .filter-bar { display:flex; flex-wrap:wrap; gap:6px; }
+    .filter-btn { padding:5px 13px; border-radius:20px; border:1px solid var(--border); background:var(--surface); color:var(--text-mid); font-size:0.76rem; font-family:inherit; cursor:pointer; transition:all 0.18s; display:flex; align-items:center; gap:5px; }
+    .filter-btn .dot { width:7px; height:7px; border-radius:50%; }
+    .filter-btn:hover { background:rgba(0,0,0,0.05); }
+    .filter-btn.active { border-color:var(--cat-color); background:rgba(255,255,255,0.9); color:var(--cat-color); font-weight:600; box-shadow:0 1px 4px rgba(0,0,0,0.1); }
+
+    /* 气候色带 */
+    .section-title { font-size:0.7rem; color:var(--text-mid); letter-spacing:0.1em; margin-bottom:10px; font-weight:600; }
+    .climate-strip { display:flex; height:26px; border-radius:10px; overflow:hidden; margin-bottom:8px; border:1px solid var(--border); }
+    .climate-seg { display:flex; align-items:center; justify-content:center; font-size:0.58rem; font-weight:600; white-space:nowrap; overflow:hidden; letter-spacing:0.02em; }
+    .climate-legend { display:flex; flex-wrap:wrap; gap:10px; margin-bottom:20px; }
+    .climate-legend-item { display:flex; align-items:center; gap:5px; font-size:0.68rem; color:var(--text-mid); }
+    .climate-legend-dot { width:10px; height:10px; border-radius:3px; }
+
+    /* 52周鸟瞰 */
+    .weeks-overview { display:grid; grid-template-columns:repeat(13,1fr); gap:3px; margin-bottom:4px; }
+    .week-cell { height:50px; border-radius:6px; background:#fff; border:1px solid var(--border); cursor:pointer; transition:all 0.18s; position:relative; overflow:hidden; display:flex; flex-direction:column; align-items:center; padding-top:4px; gap:2px; box-shadow:0 1px 3px rgba(0,0,0,0.06); }
+    .week-cell:hover { border-color:rgba(0,0,0,0.2); background:#f8f9ff; box-shadow:0 2px 6px rgba(0,0,0,0.1); }
+    .week-cell.active { border-color:rgba(63,81,181,0.5); background:#eef0ff; box-shadow:0 2px 8px rgba(63,81,181,0.15); }
+    .week-cell.current-week { border-color:rgba(230,160,0,0.6); background:#fffbee; }
+    .week-cell.gap-warning { border-color:rgba(239,83,80,0.5) !important; background:#fff5f5 !important; }
+    .week-num { font-size:0.56rem; color:rgba(0,0,0,0.5); font-weight:700; line-height:1; }
+    .week-climate-bar { width:100%; height:3px; position:absolute; bottom:0; left:0; }
+    .week-dots { display:flex; flex-wrap:wrap; gap:1px; justify-content:center; padding:0 2px; }
+    .week-dot { width:5px; height:5px; border-radius:50%; }
+    .week-jieqi { position:absolute; top:2px; right:2px; font-size:0.46rem; color:rgba(180,120,0,0.9); line-height:1; }
+    .week-holiday { position:absolute; bottom:5px; left:0; right:0; font-size:0.44rem; color:rgba(200,50,50,0.9); text-align:center; line-height:1; }
+
+    /* 月份标签行 */
+    .month-labels { display:flex; flex-wrap:wrap; gap:4px 0; margin-bottom:20px; }
+    .month-label-cell { font-size:0.72rem; color:var(--text-mid); font-weight:600; padding:3px 10px; cursor:pointer; border-radius:12px; transition:all 0.15s; white-space:nowrap; }
+    .month-label-cell:hover { background:rgba(63,81,181,0.08); color:#3f51b5; }
+    .month-label-cell.active-month { background:rgba(63,81,181,0.12); color:#3f51b5; }
+    .month-label-cell.active { background:rgba(63,81,181,0.15); color:#3f51b5; font-weight:700; border-bottom:2px solid #3f51b5; }
+
+    /* 周详情 */
+    .week-detail { background:#fff; border:1px solid rgba(0,0,0,0.1); border-radius:16px; overflow:hidden; margin-bottom:24px; animation:slide-in 0.2s ease; box-shadow:0 4px 20px rgba(0,0,0,0.08); }
+    @keyframes slide-in { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
+    .detail-header { padding:14px 20px 12px; border-bottom:1px solid var(--border); display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+    .detail-week-name { font-size:1rem; font-weight:700; }
+    .detail-badge { font-size:0.68rem; color:var(--text-dim); background:rgba(0,0,0,0.05); padding:2px 10px; border-radius:20px; }
+    .detail-climate-badge { font-size:0.68rem; font-weight:600; padding:2px 10px; border-radius:20px; }
+    .detail-close { margin-left:auto; background:none; border:none; color:var(--text-dim); font-size:1rem; cursor:pointer; padding:2px 6px; border-radius:6px; transition:all 0.2s; }
+    .detail-close:hover { color:var(--text); background:rgba(0,0,0,0.06); }
+
+    /* 节气/节日行 */
+    .event-row { padding:8px 20px 10px; border-bottom:1px solid var(--border); display:flex; gap:7px; flex-wrap:wrap; align-items:center; }
+    .jieqi-tag { font-size:0.68rem; padding:2px 10px; border-radius:12px; background:rgba(200,140,0,0.08); border:1px solid rgba(200,140,0,0.25); color:rgba(160,100,0,0.95); }
+    .holiday-tag { font-size:0.68rem; padding:2px 10px; border-radius:12px; background:rgba(220,50,50,0.08); border:1px solid rgba(220,50,50,0.22); color:rgba(190,40,40,0.95); }
+    /* 饮食洞察行 */
+    .food-insight-row { padding:8px 20px 10px; border-bottom:1px solid var(--border); display:flex; align-items:flex-start; gap:10px; background:rgba(255,248,230,0.5); }
+    .food-insight-title { font-size:0.66rem; color:rgba(160,100,0,0.8); white-space:nowrap; padding-top:3px; flex-shrink:0; font-weight:600; }
+    .food-insight-tags { display:flex; flex-wrap:wrap; gap:5px; }
+    .food-insight-tag { font-size:0.66rem; padding:2px 9px; border-radius:12px; background:rgba(255,200,50,0.12); border:1px solid rgba(200,140,0,0.2); color:rgba(140,80,0,0.9); }
+    .food-insight-tip { font-size:0.64rem; color:rgba(140,80,0,0.7); font-style:italic; padding-top:3px; }
+
+    /* 食材行 */
+    .ingredients-row { padding:8px 20px 10px; border-bottom:1px solid var(--border); display:flex; align-items:flex-start; gap:10px; }
+    .ing-title { font-size:0.66rem; color:var(--text-mid); white-space:nowrap; padding-top:3px; flex-shrink:0; font-weight:600; }
+    .ing-tags { display:flex; flex-wrap:wrap; gap:5px; }
+    .ing-tag { font-size:0.66rem; padding:2px 8px; border-radius:12px; cursor:pointer; transition:all 0.15s; border:1px solid transparent; display:flex; align-items:center; gap:3px; }
+    .ing-tag.fruit   { background:rgba(216,27,96,0.07);  color:#c2185b; border-color:rgba(216,27,96,0.2); }
+    .ing-tag.veggie  { background:rgba(46,125,50,0.07);   color:#2e7d32; border-color:rgba(46,125,50,0.2); }
+    .ing-tag.meat    { background:rgba(230,81,0,0.07);    color:#e65100; border-color:rgba(230,81,0,0.2); }
+    .ing-tag.seafood { background:rgba(2,119,189,0.07);   color:#0277bd; border-color:rgba(2,119,189,0.2); }
+    .ing-tag.other   { background:rgba(0,0,0,0.04); color:var(--text-mid); border-color:var(--border); }
+    .ing-window { font-size:0.56rem; opacity:0.7; background:rgba(0,0,0,0.07); padding:0 4px; border-radius:4px; }
+    .ing-tag.urgent .ing-window { color:#c62828; background:rgba(239,83,80,0.12); }
+    .ing-tag:hover { opacity:0.82; transform:scale(1.04); }
+    .ing-tag.highlighted { box-shadow:0 0 0 2px currentColor; background:currentColor !important; color:#fff !important; font-weight:700; }
+    .ing-tag.highlighted .ing-window { background:rgba(255,255,255,0.25); color:#fff; opacity:1; }
+    .ing-highlight-tip { font-size:0.63rem; color:rgba(63,81,181,0.8); background:rgba(63,81,181,0.06); border:1px dashed rgba(63,81,181,0.2); border-radius:8px; padding:4px 12px; margin-top:6px; display:none; }
+    .ing-highlight-tip.show { display:block; }
+
+    /* 气温行 */
+    .temp-row { padding:6px 20px 8px; border-bottom:1px solid var(--border); display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+    .temp-label { font-size:0.66rem; color:var(--text-mid); flex-shrink:0; font-weight:600; }
+    .temp-bar-wrap { width:120px; height:6px; background:rgba(0,0,0,0.08); border-radius:6px; overflow:hidden; }
+    .temp-bar { height:100%; border-radius:6px; }
+    .temp-value { font-size:0.7rem; color:var(--text); font-weight:600; }
+    .temp-hint { font-size:0.66rem; color:var(--text-mid); font-style:italic; }
+
+    /* 甘特图 */
+    .gantt-wrap { padding:14px 20px 18px; }
+    .gantt-rows { display:flex; flex-direction:column; gap:6px; }
+    .gantt-row { display:flex; align-items:center; gap:8px; min-height:32px; }
+    .gantt-cat-label { width:76px; flex-shrink:0; font-size:0.66rem; color:var(--text); font-weight:600; display:flex; align-items:center; gap:4px; }
+    .gantt-cat-dot { width:7px; height:7px; border-radius:50%; flex-shrink:0; }
+    .gantt-track { flex:1; position:relative; height:32px; }
+
+    /* 备货带 */
+    .prep-band { position:absolute; top:0; height:100%; border-radius:6px; opacity:0.55; border:2px dashed rgba(0,0,0,0.3); pointer-events:none; }
+
+    /* 活动块 */
+    .act-block { position:absolute; top:2px; height:28px; border-radius:6px; cursor:pointer; display:flex; align-items:center; padding:0 8px; overflow:hidden; transition:opacity 0.15s,transform 0.15s; }
+    .act-block:hover { opacity:0.82; transform:scaleY(1.06); }
+    .act-label { font-size:0.6rem; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; color:rgba(0,0,0,0.8); }
+    .act-status-badge { position:absolute; top:2px; right:4px; font-size:0.5rem; font-weight:700; padding:1px 5px; border-radius:6px; background:rgba(0,0,0,0.18); color:#fff; white-space:nowrap; letter-spacing:0.02em; line-height:1.4; }
+    .act-priority-stripe { position:absolute; left:0; top:0; bottom:0; width:3px; border-radius:6px 0 0 6px; }
+
+    /* 空轨道 */
+    .gantt-empty { flex:1; height:32px; border-radius:6px; background:rgba(0,0,0,0.02); border:1px dashed rgba(0,0,0,0.1); cursor:pointer; transition:all 0.15s; display:flex; align-items:center; padding:0 10px; }
+    .gantt-empty:hover { background:rgba(63,81,181,0.05); border-color:rgba(63,81,181,0.25); }
+    .add-hint { font-size:0.66rem; color:var(--text-mid); display:none; margin:0 auto; }
+    .gantt-empty:hover .add-hint { display:block; }
+    /* 有建议的空轨道 */
+    .sugg-hint { font-size:0.63rem; color:rgba(140,90,0,0.8); background:rgba(255,200,50,0.1); border:1px dashed rgba(200,140,0,0.3); border-radius:8px; padding:2px 8px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:100%; transition:all 0.15s; }
+    .gantt-empty:hover .sugg-hint { background:rgba(255,200,50,0.18); border-color:rgba(200,140,0,0.5); color:rgba(120,70,0,0.95); }
+    .gantt-empty:has(.sugg-hint) { background:rgba(255,248,220,0.4); border-color:rgba(200,140,0,0.2); }
+
+    /* 空窗预警 */
+    .gap-warning-bar { padding:7px 20px; border-top:1px solid var(--border); font-size:0.68rem; color:rgba(180,30,30,0.85); display:flex; align-items:center; gap:6px; background:rgba(255,235,235,0.6); }
+
+    /* 弹窗 */
+    .modal-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.35); z-index:100; align-items:center; justify-content:center; padding:20px; backdrop-filter:blur(4px); }
+    .modal-overlay.open { display:flex; }
+    .modal { background:#fff; border:1px solid rgba(0,0,0,0.1); border-radius:20px; padding:24px 22px 20px; width:100%; max-width:460px; box-shadow:0 12px 48px rgba(0,0,0,0.18); animation:modal-in 0.2s ease; max-height:90vh; overflow-y:auto; }
+    @keyframes modal-in { from{opacity:0;transform:translateY(12px) scale(0.97)} to{opacity:1;transform:translateY(0) scale(1)} }
+    .modal-title { font-size:0.96rem; font-weight:700; margin-bottom:16px; display:flex; align-items:center; gap:8px; }
+    .modal-close { margin-left:auto; background:none; border:none; color:var(--text-dim); font-size:1.1rem; cursor:pointer; padding:0 4px; line-height:1; transition:color 0.2s; }
+    .modal-close:hover { color:var(--text); }
+    .form-row { margin-bottom:12px; }
+    .form-label { font-size:0.7rem; color:var(--text-dim); margin-bottom:5px; display:block; }
+    .form-input,.form-select,.form-textarea { width:100%; background:#f5f6fa; border:1px solid rgba(0,0,0,0.12); border-radius:9px; color:var(--text); font-size:0.85rem; font-family:inherit; padding:8px 11px; outline:none; transition:border-color 0.2s; }
+    .form-input[type="date"] { color-scheme:light; }
+    .form-input:focus,.form-select:focus,.form-textarea:focus { border-color:rgba(63,81,181,0.5); background:#fff; }
+    .form-select option { background:#fff; color:var(--text); }
+    .form-textarea { resize:vertical; min-height:56px; line-height:1.6; }
+    .form-row-2 { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+    .status-opts,.priority-opts { display:flex; gap:5px; flex-wrap:wrap; }
+    .status-opt,.priority-opt { padding:4px 11px; border-radius:8px; font-size:0.7rem; cursor:pointer; border:1px solid rgba(0,0,0,0.1); transition:all 0.15s; background:rgba(0,0,0,0.03); color:var(--text-mid); }
+    .status-opt.selected { border-color:var(--s-color); color:var(--s-color); background:rgba(0,0,0,0.04); font-weight:600; }
+    .priority-opt.selected { border-color:var(--p-color); color:var(--p-color); background:rgba(0,0,0,0.04); font-weight:600; }
+    .prep-row { display:flex; align-items:center; gap:8px; }
+    .prep-input { width:56px; background:#f5f6fa; border:1px solid rgba(0,0,0,0.12); border-radius:8px; color:var(--text); font-size:0.85rem; font-family:inherit; padding:6px 8px; outline:none; text-align:center; }
+    .prep-hint { font-size:0.68rem; color:var(--text-dim); }
+    .review-section { border-top:1px solid var(--border); padding-top:12px; margin-top:4px; }
+    .review-title { font-size:0.7rem; color:var(--text-dim); margin-bottom:8px; }
+    .modal-footer { display:flex; justify-content:space-between; align-items:center; margin-top:16px; }
+    .btn-delete-act { background:none; border:none; color:rgba(239,83,80,0.5); font-size:0.74rem; cursor:pointer; padding:5px 9px; border-radius:8px; transition:all 0.2s; font-family:inherit; }
+    .btn-delete-act:hover { background:rgba(239,83,80,0.1); color:#ef5350; }
+    .modal-btns { display:flex; gap:8px; }
+    .btn-cancel { background:rgba(0,0,0,0.05); border:1px solid rgba(0,0,0,0.1); color:var(--text-mid); border-radius:9px; font-size:0.8rem; font-family:inherit; padding:7px 16px; cursor:pointer; transition:all 0.2s; }
+    .btn-cancel:hover { background:rgba(0,0,0,0.09); }
+    .btn-confirm { background:linear-gradient(135deg,#7986cb,#5c6bc0); border:none; color:#fff; border-radius:9px; font-size:0.8rem; font-weight:600; font-family:inherit; padding:7px 20px; cursor:pointer; transition:opacity 0.2s; }
+    .btn-confirm:hover { opacity:0.88; }
+
+    /* 图例 */
+    .legend-bar { display:flex; flex-wrap:wrap; gap:12px; margin-bottom:16px; align-items:center; }
+    .legend-item { display:flex; align-items:center; gap:4px; font-size:0.66rem; color:var(--text-mid); }
+    .legend-dot { width:8px; height:8px; border-radius:50%; }
+
+    footer { text-align:center; color:rgba(0,0,0,0.4); font-size:0.68rem; margin-top:48px; }
+
+    /* 月份视图 */
+    .month-view { background:#fff; border:1px solid rgba(0,0,0,0.1); border-radius:16px; overflow:hidden; margin-bottom:24px; animation:slide-in 0.2s ease; box-shadow:0 4px 20px rgba(0,0,0,0.08); }
+    .month-view-header { padding:14px 20px 12px; border-bottom:1px solid var(--border); display:flex; align-items:center; gap:10px; }
+    .month-view-title { font-size:1rem; font-weight:700; }
+    .month-view-close { margin-left:auto; background:none; border:none; color:var(--text-dim); font-size:1rem; cursor:pointer; padding:2px 6px; border-radius:6px; transition:all 0.2s; }
+    .month-view-close:hover { color:var(--text); background:rgba(0,0,0,0.06); }
+    .month-week-block { border-bottom:1px solid var(--border); }
+    .month-week-block:last-child { border-bottom:none; }
+    .month-week-header { padding:6px 20px; background:rgba(0,0,0,0.02); display:flex; align-items:center; gap:10px; cursor:pointer; transition:background 0.15s; }
+    .month-week-header:hover { background:rgba(63,81,181,0.04); }
+    .month-week-label { font-size:0.72rem; font-weight:700; color:var(--text); min-width:48px; }
+    .month-week-dates { font-size:0.66rem; color:var(--text-mid); }
+    .month-week-tags { display:flex; gap:4px; flex-wrap:wrap; margin-left:auto; }
+    .month-week-gantt { padding:8px 20px 10px; display:flex; flex-direction:column; gap:5px; }
+    .month-gantt-row { display:flex; align-items:center; gap:8px; min-height:28px; }
+    .month-gantt-label { width:60px; flex-shrink:0; font-size:0.62rem; color:var(--text); font-weight:600; display:flex; align-items:center; gap:3px; }
+    .month-gantt-track { flex:1; position:relative; height:26px; }
+    .month-act-block { position:absolute; top:1px; height:24px; border-radius:5px; display:flex; align-items:center; padding:0 6px; overflow:hidden; cursor:pointer; transition:opacity 0.15s; }
+    .month-act-block:hover { opacity:0.82; }
+    .month-act-label { font-size:0.58rem; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; color:rgba(0,0,0,0.8); }
+    .month-empty-track { flex:1; height:26px; border-radius:5px; background:rgba(0,0,0,0.02); border:1px dashed rgba(0,0,0,0.08); display:flex; align-items:center; padding:0 8px; cursor:pointer; transition:all 0.15s; }
+    .month-empty-track:hover { background:rgba(63,81,181,0.04); border-color:rgba(63,81,181,0.2); }
+    .month-sugg { font-size:0.6rem; color:rgba(140,90,0,0.75); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+
+    @media(max-width:700px) {
+      .weeks-overview,.month-labels { grid-template-columns:repeat(9,1fr); }
+      .form-row-2 { grid-template-columns:1fr; }
+    }
+  </style>
+</head>
+<body>
+<canvas id="stars-canvas"></canvas>
+<div class="page">
+
+  <div class="header">
+    <h1>🍽 餐饮品类52周活动排期表</h1>
+    <p class="desc">
+      基于 <strong>日本52周商品管理法</strong>，以周为最小颗粒度规划全年品类节奏。<br>
+      结合 <strong>气候节气 × 应季食材 × 地域差异</strong>，让每一个时令窗口精准落地。<br>
+      内置备货前置提醒、品类空窗预警与活动复盘，覆盖排期全生命周期。
+    </p>
+  </div>
+
+  <div class="control-bar">
+    <div class="region-tabs" id="region-tabs">
+      <button class="region-tab" data-region="national">🌏 全国</button>
+      <button class="region-tab active" data-region="south">🌴 华南</button>
+      <button class="region-tab" data-region="east">🌊 华东</button>
+      <button class="region-tab" data-region="north">❄️ 华北</button>
+      <button class="region-tab" data-region="west">🏔 西南</button>
+    </div>
+    <div class="filter-bar" id="filter-bar">
+      <button class="filter-btn active" data-cat="all" style="--cat-color:#6366f1"><span class="dot" style="background:#6366f1"></span>全部</button>
+      <button class="filter-btn" data-cat="milk"    style="--cat-color:var(--c-milk)">   <span class="dot" style="background:var(--c-milk)"></span>奶茶</button>
+      <button class="filter-btn" data-cat="coffee"  style="--cat-color:var(--c-coffee)"> <span class="dot" style="background:var(--c-coffee)"></span>咖啡</button>
+      <button class="filter-btn" data-cat="meal"    style="--cat-color:var(--c-meal)">   <span class="dot" style="background:var(--c-meal)"></span>正餐</button>
+      <button class="filter-btn" data-cat="snack"   style="--cat-color:var(--c-snack)">  <span class="dot" style="background:var(--c-snack)"></span>小吃</button>
+      <button class="filter-btn" data-cat="dessert" style="--cat-color:var(--c-dessert)"><span class="dot" style="background:var(--c-dessert)"></span>甜品</button>
+      <button class="filter-btn" data-cat="supper"  style="--cat-color:var(--c-supper)"> <span class="dot" style="background:var(--c-supper)"></span>夜宵</button>
+    </div>
+  </div>
+
+  <div id="climate-section">
+    <div class="section-title">▸ 全年气候节律（按地区）</div>
+    <div class="climate-strip" id="climate-strip"></div>
+    <div class="climate-legend" id="climate-legend"></div>
+  </div>
+
+  <div class="section-title">▸ 52周活动密度 — 点击周次查看详情与排期</div>
+  <div class="weeks-overview" id="weeks-overview"></div>
+  <div class="month-labels"   id="month-labels"></div>
+
+  <div class="legend-bar">
+    <span style="font-size:0.66rem;color:var(--text-dim)">品类：</span>
+    <div class="legend-item"><div class="legend-dot" style="background:var(--c-milk)"></div>奶茶</div>
+    <div class="legend-item"><div class="legend-dot" style="background:var(--c-coffee)"></div>咖啡</div>
+    <div class="legend-item"><div class="legend-dot" style="background:var(--c-meal)"></div>正餐</div>
+    <div class="legend-item"><div class="legend-dot" style="background:var(--c-snack)"></div>小吃</div>
+    <div class="legend-item"><div class="legend-dot" style="background:var(--c-dessert)"></div>甜品</div>
+    <div class="legend-item"><div class="legend-dot" style="background:var(--c-supper)"></div>夜宵</div>
+    <span style="margin-left:6px;font-size:0.66rem;color:var(--text-dim)">状态：</span>
+    <div class="legend-item"><div class="legend-dot" style="background:#90a4ae"></div>策划中</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#4fc3f7"></div>已确认</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#81c784"></div>进行中</div>
+    <div class="legend-item"><div class="legend-dot" style="background:rgba(255,255,255,0.25)"></div>已结束</div>
+    <span style="margin-left:6px;font-size:0.66rem;color:rgba(180,30,30,0.8)">⚠ 红框=空窗预警</span>
+    <span style="font-size:0.66rem;color:rgba(180,120,0,0.85)">✦ 黄框=当前周</span>
+  </div>
+
+  <div id="month-view-wrap"></div>
+  <div id="week-detail-wrap"></div>
+
+</div>
+
+<!-- 弹窗 -->
+<div class="modal-overlay" id="modal-overlay">
+  <div class="modal">
+    <div class="modal-title">
+      <span id="modal-title-text">新增活动</span>
+      <button class="modal-close" id="modal-close">✕</button>
+    </div>
+    <div class="form-row">
+      <label class="form-label">活动名称</label>
+      <input class="form-input" id="f-name" type="text" placeholder="例如：荔枝季限定奶茶上新" maxlength="30" />
+    </div>
+    <div class="form-row-2 form-row">
+      <div>
+        <label class="form-label">品类</label>
+        <select class="form-select" id="f-cat">
+          <option value="milk">🧋 奶茶类</option>
+          <option value="coffee">☕ 咖啡类</option>
+          <option value="meal">🍱 正餐</option>
+          <option value="snack">🥡 小吃快餐</option>
+          <option value="dessert">🍰 甜品烘焙</option>
+          <option value="supper">🌙 夜宵</option>
+        </select>
+      </div>
+      <div>
+        <label class="form-label">关联食材（可选）</label>
+        <input class="form-input" id="f-ingredient" type="text" placeholder="例如：荔枝、草莓" maxlength="30" />
+      </div>
+    </div>
+    <div class="form-row-2 form-row">
+      <div>
+        <label class="form-label">开始日期</label>
+        <input class="form-input" id="f-start" type="date" />
+      </div>
+      <div>
+        <label class="form-label">结束日期</label>
+        <input class="form-input" id="f-end" type="date" />
+      </div>
+    </div>
+    <div class="form-row">
+      <label class="form-label">活动状态</label>
+      <div class="status-opts" id="status-opts">
+        <div class="status-opt selected" data-status="planning"  style="--s-color:#90a4ae">策划中</div>
+        <div class="status-opt"          data-status="confirmed" style="--s-color:#4fc3f7">已确认</div>
+        <div class="status-opt"          data-status="ongoing"   style="--s-color:#81c784">进行中</div>
+        <div class="status-opt"          data-status="done"      style="--s-color:rgba(255,255,255,0.3)">已结束</div>
+      </div>
+    </div>
+    <div class="form-row">
+      <label class="form-label">优先级</label>
+      <div class="priority-opts" id="priority-opts">
+        <div class="priority-opt"          data-p="low"  style="--p-color:#81c784">普通</div>
+        <div class="priority-opt selected"  data-p="mid"  style="--p-color:#ffb74d">重要</div>
+        <div class="priority-opt"          data-p="high" style="--p-color:#ef5350">大促</div>
+      </div>
+    </div>
+    <div class="form-row">
+      <label class="form-label">备货提前周数</label>
+      <div class="prep-row">
+        <input class="prep-input" id="f-prep" type="number" min="0" max="8" value="2" />
+        <span class="prep-hint">周前开始备货（甘特图上显示备货带）</span>
+      </div>
+    </div>
+    <div class="form-row">
+      <label class="form-label">备注 / 关键动作</label>
+      <textarea class="form-textarea" id="f-note" placeholder="负责人、资源需求、关键节点…"></textarea>
+    </div>
+    <div class="review-section">
+      <div class="review-title">📊 活动复盘（结束后填写）</div>
+      <div class="form-row">
+        <label class="form-label">实际效果</label>
+        <textarea class="form-textarea" id="f-review" placeholder="GMV、转化率、用户反馈、下次改进点…" style="min-height:48px"></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-delete-act" id="btn-delete-act" style="display:none">🗑 删除</button>
+      <div class="modal-btns">
+        <button class="btn-cancel"  id="modal-cancel">取消</button>
+        <button class="btn-confirm" id="modal-confirm">保存</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<footer>餐饮品类52周活动排期表 · 基于日本52周商品管理法 · 数据保存在本地浏览器</footer>
+
+<script>
+// ══════════════════════════════════════════════════════
+//  基础常量
+// ══════════════════════════════════════════════════════
+const YEAR = 2026;
+
+const CAT_META = {
+  milk:    { label:'奶茶类',  color:'#f48fb1', emoji:'🧋' },
+  coffee:  { label:'咖啡类',  color:'#ffb74d', emoji:'☕' },
+  meal:    { label:'正餐',    color:'#4fc3f7', emoji:'🍱' },
+  snack:   { label:'小吃',    color:'#81c784', emoji:'🥡' },
+  dessert: { label:'甜品烘焙',color:'#ce93d8', emoji:'🍰' },
+  supper:  { label:'夜宵',    color:'#ff8a65', emoji:'🌙' },
+};
+
+const STATUS_META = {
+  planning:  { label:'策划中', color:'#90a4ae' },
+  confirmed: { label:'已确认', color:'#4fc3f7' },
+  ongoing:   { label:'进行中', color:'#81c784' },
+  done:      { label:'已结束', color:'rgba(255,255,255,0.25)' },
+};
+
+const PRIORITY_META = {
+  low:  { label:'普通', color:'#81c784', opacity:0.72 },
+  mid:  { label:'重要', color:'#ffb74d', opacity:0.88 },
+  high: { label:'大促', color:'#ef5350', opacity:1.0  },
+};
+
+// ── 气候带（按地区，周范围 1-52）──
+const CLIMATE_ZONES = {
+  south: [
+    { name:'凛冬期', weeks:[1,6],   color:'#7986cb', textColor:'#c5cae9', emoji:'❄️' },
+    { name:'回暖期', weeks:[7,10],  color:'#66bb6a', textColor:'#c8e6c9', emoji:'🌱' },
+    { name:'梅雨季', weeks:[11,16], color:'#78909c', textColor:'#cfd8dc', emoji:'🌧' },
+    { name:'酷暑期', weeks:[17,36], color:'#ef5350', textColor:'#ffcdd2', emoji:'☀️' },
+    { name:'秋凉期', weeks:[37,44], color:'#ffa726', textColor:'#ffe0b2', emoji:'🍂' },
+    { name:'入冬期', weeks:[45,52], color:'#5c6bc0', textColor:'#c5cae9', emoji:'🌨' },
+  ],
+  east: [
+    { name:'严冬期', weeks:[1,7],   color:'#7986cb', textColor:'#c5cae9', emoji:'❄️' },
+    { name:'春寒期', weeks:[8,12],  color:'#81c784', textColor:'#c8e6c9', emoji:'🌱' },
+    { name:'梅雨季', weeks:[13,18], color:'#78909c', textColor:'#cfd8dc', emoji:'🌧' },
+    { name:'酷暑期', weeks:[19,35], color:'#ef5350', textColor:'#ffcdd2', emoji:'☀️' },
+    { name:'秋高期', weeks:[36,43], color:'#ffa726', textColor:'#ffe0b2', emoji:'🍂' },
+    { name:'入冬期', weeks:[44,52], color:'#5c6bc0', textColor:'#c5cae9', emoji:'🌨' },
+  ],
+  north: [
+    { name:'严冬期', weeks:[1,9],   color:'#5c6bc0', textColor:'#c5cae9', emoji:'❄️' },
+    { name:'春寒期', weeks:[10,14], color:'#81c784', textColor:'#c8e6c9', emoji:'🌱' },
+    { name:'春暖期', weeks:[15,19], color:'#aed581', textColor:'#f1f8e9', emoji:'🌸' },
+    { name:'初夏期', weeks:[20,22], color:'#ffca28', textColor:'#fff8e1', emoji:'🌤' },
+    { name:'酷暑期', weeks:[23,34], color:'#ef5350', textColor:'#ffcdd2', emoji:'☀️' },
+    { name:'秋高期', weeks:[35,42], color:'#ffa726', textColor:'#ffe0b2', emoji:'🍂' },
+    { name:'入冬期', weeks:[43,52], color:'#5c6bc0', textColor:'#c5cae9', emoji:'🌨' },
+  ],
+  west: [
+    { name:'冬干期', weeks:[1,8],   color:'#7986cb', textColor:'#c5cae9', emoji:'❄️' },
+    { name:'春暖期', weeks:[9,14],  color:'#81c784', textColor:'#c8e6c9', emoji:'🌸' },
+    { name:'雨季前', weeks:[15,19], color:'#aed581', textColor:'#f1f8e9', emoji:'🌤' },
+    { name:'雨季',   weeks:[20,36], color:'#78909c', textColor:'#cfd8dc', emoji:'🌧' },
+    { name:'秋凉期', weeks:[37,44], color:'#ffa726', textColor:'#ffe0b2', emoji:'🍂' },
+    { name:'冬干期', weeks:[45,52], color:'#5c6bc0', textColor:'#c5cae9', emoji:'🌨' },
+  ],
+};
+
+// ── 24节气（2026年，近似周数）──
+const JIEQI_2026 = {
+  5:  '小寒', 7: '大寒',
+  9:  '立春', 11:'雨水',
+  13: '惊蛰', 14:'春分',
+  16: '清明', 17:'谷雨',
+  19: '立夏', 21:'小满',
+  23: '芒种', 25:'夏至',
+  27: '小暑', 29:'大暑',
+  31: '立秋', 33:'处暑',
+  35: '白露', 37:'秋分',
+  39: '寒露', 41:'霜降',
+  43: '立冬', 45:'小雪',
+  47: '大雪', 50:'冬至',
+  52: '小寒',
+};
+
+// ── 传统节日 & 大促（2026年，近似周数）──
+const HOLIDAYS_2026 = {
+  1:  '元旦',
+  5:  '春节',
+  7:  '情人节',
+  10: '妇女节',
+  18: '劳动节',
+  19: '母亲节',
+  22: '儿童节',
+  24: '父亲节',
+  25: '端午节',
+  34: '七夕',
+  39: '中秋',
+  40: '国庆',
+  42: '重阳节',
+  46: '双11',
+  49: '双12',
+  52: '圣诞',
+};
+
+// ── 节日 & 节气饮食洞察（周数 → 洞察对象）──
+// foods: 传统食品列表；tip: 消费行为提示
+const FOOD_INSIGHTS = {
+  // 元旦
+  1:  { foods:['饺子','年糕','汤圆','长寿面'], tip:'跨年仪式感消费，暖食/甜品礼盒需求高' },
+  // 小寒
+  5:  { foods:['腊八粥','羊肉汤','糯米饭','饺子'], tip:'小寒进补旺季，羊肉/火锅品类爆发期' },
+  // 春节
+  6:  { foods:['饺子','年糕','汤圆','鱼','红烧肉','春卷','元宵'], tip:'全年最大节日，家宴食材备货需提前3周；外卖需求在除夕前后显著下降，初三后回升' },
+  // 大寒 + 情人节（同周）
+  7:  { foods:['巧克力蛋糕','草莓甜品','马卡龙','八宝饭','腊肉'], tip:'情人节：情侣套餐+甜品礼盒是核心，草莓季与情人节高度重叠；大寒：腌腊食品消费高峰' },
+  // 元宵节（约第7-8周）
+  8:  { foods:['汤圆','元宵','花生汤圆','芝麻汤圆'], tip:'元宵节甜品品类单日峰值，汤圆/甜汤需求集中爆发' },
+  // 雨水/惊蛰
+  11: { foods:['春笋炒肉','荠菜饺子','春饼','韭菜盒子'], tip:'春季时令蔬菜上市，轻食/春季新品是主推方向' },
+  // 妇女节（3月8日）
+  10: { foods:['鲜花蛋糕','草莓甜品','玫瑰花茶','下午茶礼盒','马卡龙'], tip:'妇女节是蛋糕消费全年第三峰值（仅次于生日/情人节）；鲜花蛋糕、草莓甜品、下午茶礼盒是核心品类，建议提前1周预热，当天备货量×2' },
+  // 清明
+  16: { foods:['青团','艾草糕','清明粿','螺蛳'], tip:'清明青团是全国性爆款，江南地区螺蛳粉/螺蛳消费高峰' },
+  // 谷雨
+  17: { foods:['香椿炒蛋','谷雨茶','春笋','豌豆'], tip:'谷雨前后香椿窗口极短（约3周），需快速上新' },
+  // 劳动节
+  18: { foods:['小龙虾','烧烤','串串','冷饮'], tip:'五一长假外出就餐高峰，小龙虾/烧烤/夜宵品类全面爆发' },
+  // 母亲节（5月第二个周日）+ 立夏
+  19: { foods:['母亲节蛋糕','鲜花甜品','草莓蛋糕','立夏蛋','豌豆饭','冷饮'], tip:'母亲节是蛋糕消费全年第二峰值，仅次于生日月；鲜花蛋糕/草莓蛋糕/甜品礼盒需求激增，建议提前2周预热，当天备货量×3；立夏同周，冷饮/冰品需求同步上升' },
+  // 儿童节
+  22: { foods:['儿童蛋糕','冰淇淋','棉花糖','彩虹甜品'], tip:'亲子消费节点，儿童主题甜品/套餐转化率高' },
+  // 父亲节（6月第三个周日）
+  24: { foods:['父亲节蛋糕','啤酒烧烤','硬核套餐','男士甜品'], tip:'父亲节蛋糕消费较母亲节低但增速快；烧烤/啤酒/硬核正餐套餐是差异化方向，建议与甜品品类联动' },
+  // 端午节 + 夏至（同周）
+  25: { foods:['粽子','咸鸭蛋','绿豆糕','凉面','冷饮','荔枝'], tip:'端午：粽子礼盒预售可提前2-3周；夏至：吃面（北方），冷饮/冰品全面进入旺季' },
+  // 七夕
+  34: { foods:['巧克力','草莓蛋糕','百香果特调','情侣套餐'], tip:'七夕甜品/饮品消费仅次于情人节，情侣套餐+限定特调是核心' },
+  // 中秋
+  39: { foods:['月饼','柚子','螃蟹','芋头','桂花糕'], tip:'月饼礼盒需提前3周预售；螃蟹宴是中秋正餐核心品类；柚子甜品可做差异化' },
+  // 国庆
+  40: { foods:['烤鸭','火锅','螃蟹','板栗','柿子'], tip:'国庆长假外出就餐高峰，正餐/火锅/烧烤全面爆发；10月为中国出生高峰月，生日蛋糕需求全年最高' },
+  // 重阳节
+  42: { foods:['重阳糕','菊花酒','螃蟹','板栗糕'], tip:'重阳糕是传统节令食品，老年群体消费节点；板栗/菊花主题甜品可做差异化' },
+  // 立冬
+  43: { foods:['饺子','羊肉汤','涮羊肉','姜母鸭'], tip:'立冬吃饺子（北方传统），羊肉/火锅品类进入旺季，备货需提前2周' },
+  // 双11
+  46: { foods:['火锅','暖饮','奶茶','烘焙'], tip:'双11大促期，预制菜/火锅食材礼盒是爆款；暖饮/奶茶线上订单峰值' },
+  // 冬至
+  50: { foods:['饺子','汤圆','羊肉汤','赤豆糯米饭'], tip:'冬至吃饺子（北方）/汤圆（南方），全年第二大饺子消费节点，仅次于春节' },
+  // 双12
+  49: { foods:['暖饮','火锅套餐','烘焙礼盒'], tip:'双12年末收官大促，暖饮/甜品礼盒是主推方向' },
+  // 圣诞
+  52: { foods:['圣诞蛋糕','姜饼','热可可','苹果（平安夜）'], tip:'圣诞平安夜苹果谐音"平安"，苹果主题甜品/饮品有独特消费场景；圣诞蛋糕是全年烘焙品类第二峰值' },
+};
+
+// ── 应季食材（按地区 × 月份）──
+// window: 食材上市窗口宽度（周），越小越紧迫
+const INGREDIENTS = {
+  south: {
+    1:  [{name:'砂糖橘',type:'fruit',window:8},{name:'草莓',type:'fruit',window:10},{name:'白菜',type:'veggie',window:12},{name:'羊肉',type:'meat',window:16},{name:'鲫鱼',type:'seafood',window:20}],
+    2:  [{name:'草莓',type:'fruit',window:10},{name:'血橙',type:'fruit',window:6},{name:'春笋',type:'veggie',window:6},{name:'菠菜',type:'veggie',window:8},{name:'鲈鱼',type:'seafood',window:16}],
+    3:  [{name:'草莓',type:'fruit',window:10},{name:'樱桃',type:'fruit',window:4},{name:'春笋',type:'veggie',window:6},{name:'豌豆',type:'veggie',window:6},{name:'鲫鱼',type:'seafood',window:16}],
+    4:  [{name:'荔枝（早熟）',type:'fruit',window:3},{name:'枇杷',type:'fruit',window:5},{name:'香椿',type:'veggie',window:3},{name:'蚕豆',type:'veggie',window:6},{name:'鲥鱼',type:'seafood',window:4}],
+    5:  [{name:'荔枝',type:'fruit',window:4},{name:'杨梅',type:'fruit',window:3},{name:'小龙虾',type:'seafood',window:10},{name:'苦瓜',type:'veggie',window:12},{name:'黄鳝',type:'seafood',window:12}],
+    6:  [{name:'荔枝',type:'fruit',window:4},{name:'西瓜',type:'fruit',window:14},{name:'龙眼',type:'fruit',window:6},{name:'黄瓜',type:'veggie',window:12},{name:'小龙虾',type:'seafood',window:10}],
+    7:  [{name:'西瓜',type:'fruit',window:14},{name:'桃子',type:'fruit',window:6},{name:'百香果',type:'fruit',window:8},{name:'玉米',type:'veggie',window:8},{name:'龙虾',type:'seafood',window:8}],
+    8:  [{name:'葡萄',type:'fruit',window:8},{name:'百香果',type:'fruit',window:8},{name:'火龙果',type:'fruit',window:10},{name:'螃蟹',type:'seafood',window:10},{name:'秋葵',type:'veggie',window:8}],
+    9:  [{name:'螃蟹',type:'seafood',window:8},{name:'柚子',type:'fruit',window:6},{name:'葡萄',type:'fruit',window:8},{name:'板栗',type:'other',window:6},{name:'莲藕',type:'veggie',window:10}],
+    10: [{name:'螃蟹',type:'seafood',window:8},{name:'柿子',type:'fruit',window:6},{name:'苹果',type:'fruit',window:10},{name:'板栗',type:'other',window:6},{name:'南瓜',type:'veggie',window:8}],
+    11: [{name:'橙子',type:'fruit',window:8},{name:'柚子',type:'fruit',window:6},{name:'白萝卜',type:'veggie',window:12},{name:'羊肉',type:'meat',window:16},{name:'鲫鱼',type:'seafood',window:16}],
+    12: [{name:'砂糖橘',type:'fruit',window:8},{name:'冬枣',type:'fruit',window:4},{name:'白菜',type:'veggie',window:12},{name:'羊肉',type:'meat',window:16},{name:'鲈鱼',type:'seafood',window:16}],
+  },
+  east: {
+    1:  [{name:'草莓',type:'fruit',window:10},{name:'砂糖橘',type:'fruit',window:6},{name:'白菜',type:'veggie',window:12},{name:'羊肉',type:'meat',window:16},{name:'鲫鱼',type:'seafood',window:16}],
+    2:  [{name:'草莓',type:'fruit',window:10},{name:'血橙',type:'fruit',window:6},{name:'春笋',type:'veggie',window:6},{name:'菠菜',type:'veggie',window:8},{name:'鲈鱼',type:'seafood',window:14}],
+    3:  [{name:'草莓',type:'fruit',window:10},{name:'樱桃',type:'fruit',window:4},{name:'春笋',type:'veggie',window:6},{name:'豌豆',type:'veggie',window:6},{name:'鲫鱼',type:'seafood',window:14}],
+    4:  [{name:'枇杷',type:'fruit',window:5},{name:'樱桃',type:'fruit',window:4},{name:'香椿',type:'veggie',window:3},{name:'蚕豆',type:'veggie',window:6},{name:'鲥鱼',type:'seafood',window:4}],
+    5:  [{name:'枇杷',type:'fruit',window:5},{name:'桑葚',type:'fruit',window:3},{name:'小龙虾',type:'seafood',window:12},{name:'苦瓜',type:'veggie',window:12},{name:'黄鳝',type:'seafood',window:12}],
+    6:  [{name:'杨梅',type:'fruit',window:3},{name:'西瓜',type:'fruit',window:14},{name:'小龙虾',type:'seafood',window:12},{name:'黄瓜',type:'veggie',window:12},{name:'茄子',type:'veggie',window:12}],
+    7:  [{name:'西瓜',type:'fruit',window:14},{name:'桃子',type:'fruit',window:6},{name:'葡萄',type:'fruit',window:8},{name:'玉米',type:'veggie',window:8},{name:'龙虾',type:'seafood',window:8}],
+    8:  [{name:'葡萄',type:'fruit',window:8},{name:'桃子',type:'fruit',window:6},{name:'百香果',type:'fruit',window:8},{name:'螃蟹',type:'seafood',window:10},{name:'毛豆',type:'veggie',window:6}],
+    9:  [{name:'螃蟹',type:'seafood',window:8},{name:'葡萄',type:'fruit',window:8},{name:'柚子',type:'fruit',window:6},{name:'板栗',type:'other',window:6},{name:'莲藕',type:'veggie',window:10}],
+    10: [{name:'螃蟹',type:'seafood',window:8},{name:'柿子',type:'fruit',window:6},{name:'苹果',type:'fruit',window:10},{name:'板栗',type:'other',window:6},{name:'白萝卜',type:'veggie',window:10}],
+    11: [{name:'橙子',type:'fruit',window:8},{name:'柚子',type:'fruit',window:6},{name:'大白菜',type:'veggie',window:12},{name:'羊肉',type:'meat',window:16},{name:'鲫鱼',type:'seafood',window:16}],
+    12: [{name:'砂糖橘',type:'fruit',window:6},{name:'冬枣',type:'fruit',window:4},{name:'冬笋',type:'veggie',window:6},{name:'羊肉',type:'meat',window:16},{name:'鲈鱼',type:'seafood',window:16}],
+  },
+  north: {
+    1:  [{name:'苹果（储）',type:'fruit',window:16},{name:'白菜',type:'veggie',window:16},{name:'萝卜',type:'veggie',window:16},{name:'羊肉',type:'meat',window:16},{name:'鲫鱼',type:'seafood',window:16}],
+    2:  [{name:'苹果（储）',type:'fruit',window:16},{name:'菠菜',type:'veggie',window:8},{name:'韭菜',type:'veggie',window:8},{name:'羊肉',type:'meat',window:16},{name:'鲤鱼',type:'seafood',window:14}],
+    3:  [{name:'草莓（大棚）',type:'fruit',window:8},{name:'春笋',type:'veggie',window:6},{name:'菠菜',type:'veggie',window:8},{name:'春鸡',type:'meat',window:8},{name:'鲫鱼',type:'seafood',window:14}],
+    4:  [{name:'草莓',type:'fruit',window:8},{name:'樱桃',type:'fruit',window:4},{name:'香椿',type:'veggie',window:3},{name:'蚕豆',type:'veggie',window:6},{name:'鲤鱼',type:'seafood',window:12}],
+    5:  [{name:'樱桃',type:'fruit',window:4},{name:'桑葚',type:'fruit',window:3},{name:'小龙虾',type:'seafood',window:10},{name:'苦瓜',type:'veggie',window:10},{name:'黄鳝',type:'seafood',window:10}],
+    6:  [{name:'杏子',type:'fruit',window:3},{name:'西瓜',type:'fruit',window:12},{name:'小龙虾',type:'seafood',window:10},{name:'黄瓜',type:'veggie',window:12},{name:'茄子',type:'veggie',window:12}],
+    7:  [{name:'西瓜',type:'fruit',window:12},{name:'桃子',type:'fruit',window:6},{name:'玉米',type:'veggie',window:8},{name:'羊肉（伏羊）',type:'meat',window:4},{name:'龙虾',type:'seafood',window:6}],
+    8:  [{name:'葡萄',type:'fruit',window:8},{name:'桃子',type:'fruit',window:6},{name:'梨',type:'fruit',window:8},{name:'螃蟹',type:'seafood',window:8},{name:'毛豆',type:'veggie',window:6}],
+    9:  [{name:'苹果',type:'fruit',window:10},{name:'梨',type:'fruit',window:8},{name:'板栗',type:'other',window:6},{name:'螃蟹',type:'seafood',window:8},{name:'莲藕',type:'veggie',window:10}],
+    10: [{name:'苹果',type:'fruit',window:10},{name:'柿子',type:'fruit',window:6},{name:'板栗',type:'other',window:6},{name:'白萝卜',type:'veggie',window:12},{name:'羊肉',type:'meat',window:16}],
+    11: [{name:'苹果（储）',type:'fruit',window:12},{name:'大白菜',type:'veggie',window:14},{name:'白萝卜',type:'veggie',window:12},{name:'羊肉',type:'meat',window:16},{name:'鲫鱼',type:'seafood',window:14}],
+    12: [{name:'苹果（储）',type:'fruit',window:12},{name:'白菜',type:'veggie',window:14},{name:'冬笋',type:'veggie',window:6},{name:'羊肉',type:'meat',window:16},{name:'鲤鱼',type:'seafood',window:14}],
+  },
+  west: {
+    1:  [{name:'苹果（储）',type:'fruit',window:14},{name:'白菜',type:'veggie',window:14},{name:'萝卜',type:'veggie',window:14},{name:'腊肉',type:'meat',window:12},{name:'鲫鱼',type:'seafood',window:16}],
+    2:  [{name:'草莓',type:'fruit',window:8},{name:'血橙',type:'fruit',window:6},{name:'春笋',type:'veggie',window:6},{name:'腊肉',type:'meat',window:12},{name:'鲈鱼',type:'seafood',window:14}],
+    3:  [{name:'草莓',type:'fruit',window:8},{name:'樱桃',type:'fruit',window:4},{name:'春笋',type:'veggie',window:6},{name:'豌豆',type:'veggie',window:6},{name:'鲫鱼',type:'seafood',window:14}],
+    4:  [{name:'樱桃',type:'fruit',window:4},{name:'枇杷',type:'fruit',window:5},{name:'香椿',type:'veggie',window:3},{name:'蚕豆',type:'veggie',window:6},{name:'鲤鱼',type:'seafood',window:12}],
+    5:  [{name:'枇杷',type:'fruit',window:5},{name:'桑葚',type:'fruit',window:3},{name:'小龙虾',type:'seafood',window:10},{name:'苦瓜',type:'veggie',window:10},{name:'黄鳝',type:'seafood',window:10}],
+    6:  [{name:'荔枝',type:'fruit',window:4},{name:'西瓜',type:'fruit',window:12},{name:'小龙虾',type:'seafood',window:10},{name:'黄瓜',type:'veggie',window:12},{name:'茄子',type:'veggie',window:12}],
+    7:  [{name:'西瓜',type:'fruit',window:12},{name:'桃子',type:'fruit',window:6},{name:'玉米',type:'veggie',window:8},{name:'牛肉',type:'meat',window:20},{name:'龙虾',type:'seafood',window:6}],
+    8:  [{name:'葡萄',type:'fruit',window:8},{name:'桃子',type:'fruit',window:6},{name:'百香果',type:'fruit',window:8},{name:'螃蟹',type:'seafood',window:8},{name:'秋葵',type:'veggie',window:8}],
+    9:  [{name:'苹果',type:'fruit',window:10},{name:'梨',type:'fruit',window:8},{name:'板栗',type:'other',window:6},{name:'螃蟹',type:'seafood',window:8},{name:'莲藕',type:'veggie',window:10}],
+    10: [{name:'苹果',type:'fruit',window:10},{name:'柿子',type:'fruit',window:6},{name:'板栗',type:'other',window:6},{name:'白萝卜',type:'veggie',window:12},{name:'牛肉',type:'meat',window:20}],
+    11: [{name:'橙子',type:'fruit',window:8},{name:'大白菜',type:'veggie',window:14},{name:'白萝卜',type:'veggie',window:12},{name:'腊肉',type:'meat',window:12},{name:'鲫鱼',type:'seafood',window:14}],
+    12: [{name:'苹果（储）',type:'fruit',window:12},{name:'白菜',type:'veggie',window:14},{name:'冬笋',type:'veggie',window:6},{name:'腊肉',type:'meat',window:12},{name:'鲤鱼',type:'seafood',window:14}],
+  },
+};
+
+// ── 气温参考（按地区 × 月份，[低,高] 摄氏度）──
+const TEMP_REF = {
+  south: [[10,18],[12,20],[16,24],[22,30],[26,33],[28,35],[29,36],[29,36],[26,33],[22,30],[16,24],[11,19]],
+  east:  [[2,8],  [4,10], [8,16],[14,22],[20,28],[24,32],[28,36],[28,35],[22,30],[16,24],[8,16], [2,9]],
+  north: [[-8,2], [-6,4], [2,12],[10,20],[18,28],[22,32],[26,36],[24,34],[16,26],[8,18], [0,10], [-6,4]],
+  west:  [[2,10], [4,14], [10,20],[16,24],[20,28],[22,30],[24,32],[22,30],[18,26],[12,22],[6,16], [2,10]],
+};
+
+// ── 夜宵旺季（按地区，周范围）──
+const SUPPER_PEAK = {
+  south: [14, 40], east: [18, 38], north: [20, 36], west: [18, 38], national: [16, 38],
+};
+
+// ── 全国模式：气候带（通用，仅用于周色条）──
+CLIMATE_ZONES.national = [
+  { name:'年初旺季', weeks:[1,8],   color:'#7986cb', textColor:'#c5cae9', emoji:'🎊' },
+  { name:'春季上新', weeks:[9,17],  color:'#81c784', textColor:'#c8e6c9', emoji:'🌸' },
+  { name:'夏季旺季', weeks:[18,36], color:'#ef5350', textColor:'#ffcdd2', emoji:'☀️' },
+  { name:'秋季大促', weeks:[37,44], color:'#ffa726', textColor:'#ffe0b2', emoji:'🍂' },
+  { name:'年末冲刺', weeks:[45,52], color:'#5c6bc0', textColor:'#c5cae9', emoji:'🎄' },
+];
+
+// ── 品类排期建议（周数 → 各品类建议文案）──
+// 根据节日饮食洞察 + 气温规律，为每个关键周的各品类给出具体排期建议
+// key: 周数，value: { cat: '建议文案' }
+const CAT_SUGGESTIONS = {
+  1:  { milk:'砂糖橘/草莓元旦限定奶茶', coffee:'暖冬拿铁跨年特调', dessert:'年糕/汤圆甜品礼盒', meal:'元旦暖锅套餐', snack:'长寿面/饺子小食', supper:'跨年夜宵特惠' },
+  5:  { meal:'腊八粥/羊肉汤进补套餐', milk:'姜汁/红糖暖饮系列', coffee:'冬日暖咖特调', dessert:'糯米糕/腊味甜品', snack:'饺子/汤圆小食', supper:'冬夜暖胃夜宵' },
+  6:  { meal:'春节年夜饭/家宴套餐', dessert:'年糕/汤圆/元宵礼盒', milk:'新年限定奶茶', coffee:'新春特调咖啡', snack:'春卷/饺子节令小食', supper:'除夕夜宵特惠' },
+  7:  { dessert:'情人节草莓蛋糕/马卡龙礼盒', milk:'草莓/玫瑰情人节特调', coffee:'情侣拿铁限定', meal:'情侣双人套餐', snack:'巧克力/甜品小食', supper:'情人节夜宵套餐' },
+  8:  { dessert:'元宵汤圆/甜汤专题', milk:'汤圆奶茶/元宵特调', meal:'元宵家宴套餐', coffee:'元宵节暖咖', snack:'花生/芝麻汤圆小食', supper:'元宵夜宵特惠' },
+  10: { dessert:'妇女节蛋糕/下午茶礼盒', milk:'花茶/玫瑰特调', coffee:'女神节限定拿铁', meal:'女神节双人套餐', snack:'精致甜品小食', supper:'女神节夜宵特惠' },
+  11: { meal:'春笋炒肉/荠菜饺子上新', snack:'春饼/韭菜盒子节令小食', milk:'春季新品上市', coffee:'春日特调', dessert:'春季轻食甜品', supper:'春夜小食' },
+  16: { dessert:'清明青团/艾草糕上新', snack:'螺蛳/青团节令小食', meal:'清明时令套餐', milk:'青团奶茶/抹茶特调', coffee:'清明春茶拿铁', supper:'清明夜宵' },
+  17: { meal:'香椿炒蛋/春笋时令菜', snack:'香椿饼/春笋小食', milk:'谷雨春茶特调', coffee:'谷雨新茶拿铁', dessert:'春季时令甜品', supper:'春夜小食' },
+  18: { snack:'五一小龙虾节/烧烤套餐', supper:'五一夜宵大促', meal:'劳动节正餐特惠', milk:'五一限定冷饮', coffee:'五一特调咖啡', dessert:'五一甜品礼盒' },
+  19: { dessert:'母亲节蛋糕/鲜花甜品礼盒（全年第二峰值）', milk:'母亲节玫瑰/草莓特调', coffee:'母亲节限定拿铁', meal:'母亲节家宴/双人套餐', snack:'立夏蛋/冷面小食', supper:'母亲节夜宵特惠' },
+  22: { dessert:'儿童节主题蛋糕/冰淇淋', milk:'儿童节彩虹特调', snack:'棉花糖/儿童套餐', meal:'亲子套餐专题', coffee:'儿童节甜咖', supper:'儿童节夜宵' },
+  24: { dessert:'父亲节蛋糕/男士甜品礼盒', meal:'父亲节烧烤/硬核套餐', snack:'父亲节烧烤小食', milk:'父亲节特调', coffee:'父亲节美式/黑咖', supper:'父亲节夜宵烧烤' },
+  25: { snack:'端午粽子礼盒预售', dessert:'绿豆糕/咸鸭蛋甜品', milk:'端午/夏至冷饮特调', coffee:'夏至冷萃上市', meal:'端午家宴套餐', supper:'端午夜宵特惠' },
+  34: { dessert:'七夕草莓蛋糕/情侣甜品', milk:'七夕百香果/玫瑰特调', coffee:'七夕情侣拿铁', meal:'七夕双人套餐', snack:'七夕甜品小食', supper:'七夕夜宵套餐' },
+  39: { meal:'中秋螃蟹宴/家宴套餐', dessert:'月饼/柚子甜品礼盒', milk:'中秋桂花/柚子特调', coffee:'中秋限定拿铁', snack:'月饼/咸鸭蛋小食', supper:'中秋夜宵赏月' },
+  40: { meal:'国庆烤鸭/火锅套餐', dessert:'生日蛋糕/板栗烘焙（10月生日高峰）', milk:'国庆限定奶茶', coffee:'国庆特调咖啡', snack:'板栗/柿子节令小食', supper:'国庆长假夜宵' },
+  42: { dessert:'重阳糕/菊花甜品', meal:'重阳螃蟹宴/敬老套餐', milk:'菊花/板栗特调', coffee:'重阳暖咖', snack:'重阳糕/板栗小食', supper:'重阳夜宵' },
+  43: { meal:'立冬饺子/羊肉汤专题', milk:'立冬暖饮/姜汁奶茶', coffee:'立冬暖咖特调', dessert:'立冬甜品礼盒', snack:'饺子/姜母鸭小食', supper:'立冬夜宵暖胃' },
+  46: { meal:'双11火锅套餐预售', milk:'双11暖饮大促', coffee:'双11咖啡特惠', dessert:'双11烘焙礼盒', snack:'双11小食大促', supper:'双11夜宵特惠' },
+  49: { meal:'双12正餐套餐收官', milk:'双12奶茶特惠', coffee:'双12咖啡大促', dessert:'双12烘焙礼盒', snack:'双12小食特惠', supper:'双12夜宵收官' },
+  50: { meal:'冬至饺子/汤圆专题', dessert:'冬至汤圆/赤豆糯米甜品', milk:'冬至暖饮特调', coffee:'冬至暖咖', snack:'饺子/汤圆小食', supper:'冬至夜宵暖胃' },
+  52: { dessert:'圣诞蛋糕/姜饼礼盒', milk:'圣诞热可可/苹果特调', coffee:'圣诞暖咖限定', meal:'圣诞平安夜套餐', snack:'圣诞甜品小食', supper:'圣诞夜宵特惠' },
+};
+
+// ── 预置活动 ──
+const DEFAULT_ACTIVITIES = [
+  {id:'a1', name:'元旦暖冬奶茶季',    cat:'milk',    start:'2026-01-01',end:'2026-01-07', status:'done',      priority:'high', prep:2, ingredient:'砂糖橘', note:'主推砂糖橘奶茶，配合元旦大促', review:''},
+  {id:'a2', name:'春节羊肉火锅专题',  cat:'meal',    start:'2026-01-25',end:'2026-02-05', status:'done',      priority:'high', prep:3, ingredient:'羊肉',   note:'春节期间主推暖锅套餐', review:''},
+  {id:'a3', name:'情人节草莓拿铁',    cat:'coffee',  start:'2026-02-10',end:'2026-02-16', status:'done',      priority:'mid',  prep:1, ingredient:'草莓',   note:'限定草莓拿铁+情侣套餐', review:''},
+  {id:'a4', name:'元宵汤圆甜品季',    cat:'dessert', start:'2026-03-03',end:'2026-03-07', status:'done',      priority:'mid',  prep:1, ingredient:'',       note:'元宵节主题甜品', review:''},
+  {id:'a5', name:'春笋新品上市',      cat:'meal',    start:'2026-03-10',end:'2026-03-25', status:'done',      priority:'mid',  prep:2, ingredient:'春笋',   note:'春笋炒肉/春笋排骨汤', review:''},
+  {id:'a6', name:'樱花季限定甜品',    cat:'dessert', start:'2026-03-20',end:'2026-04-10', status:'done',      priority:'mid',  prep:2, ingredient:'樱桃',   note:'樱花主题甜品礼盒', review:''},
+  {id:'a7', name:'清明青团上新',      cat:'dessert', start:'2026-04-02',end:'2026-04-08', status:'done',      priority:'mid',  prep:2, ingredient:'',       note:'清明节传统青团', review:''},
+  {id:'a8', name:'五一小龙虾节',      cat:'snack',   start:'2026-04-28',end:'2026-05-05', status:'done',      priority:'high', prep:3, ingredient:'小龙虾', note:'五一大促，小龙虾套餐买一送一', review:''},
+  {id:'a9', name:'夜宵季开幕·烧烤',  cat:'supper',  start:'2026-05-01',end:'2026-05-31', status:'done',      priority:'mid',  prep:2, ingredient:'',       note:'夜宵旺季启动，烧烤品类主推', review:''},
+  {id:'a10',name:'枇杷季奶茶新品',    cat:'milk',    start:'2026-05-01',end:'2026-05-20', status:'done',      priority:'mid',  prep:1, ingredient:'枇杷',   note:'枇杷乌龙茶系列', review:''},
+  {id:'a11',name:'端午粽子专题',      cat:'snack',   start:'2026-06-15',end:'2026-06-21', status:'ongoing',   priority:'high', prep:3, ingredient:'',       note:'端午节传统粽子，多口味礼盒', review:''},
+  {id:'a12',name:'荔枝季全品类联动',  cat:'milk',    start:'2026-06-10',end:'2026-07-05', status:'ongoing',   priority:'high', prep:3, ingredient:'荔枝',   note:'荔枝奶茶+荔枝甜品+荔枝鸡，三品类联动', review:''},
+  {id:'a13',name:'夏日冷萃咖啡季',    cat:'coffee',  start:'2026-06-01',end:'2026-08-31', status:'ongoing',   priority:'mid',  prep:2, ingredient:'',       note:'主推冷萃、冰美式，夏季主线', review:''},
+  {id:'a14',name:'夜宵·小龙虾夜市',  cat:'supper',  start:'2026-06-01',end:'2026-07-31', status:'ongoing',   priority:'high', prep:2, ingredient:'小龙虾', note:'夜宵旺季高峰，小龙虾夜市专题', review:''},
+  {id:'a15',name:'西瓜冰品专题',      cat:'dessert', start:'2026-07-01',end:'2026-07-31', status:'confirmed', priority:'mid',  prep:2, ingredient:'西瓜',   note:'西瓜冰淇淋/西瓜刨冰', review:''},
+  {id:'a16',name:'伏羊节·羊肉专题',  cat:'meal',    start:'2026-07-10',end:'2026-07-25', status:'confirmed', priority:'mid',  prep:2, ingredient:'羊肉',   note:'华北特色，伏天吃羊肉', review:''},
+  {id:'a17',name:'七夕百香果特调',    cat:'milk',    start:'2026-08-18',end:'2026-08-22', status:'confirmed', priority:'mid',  prep:2, ingredient:'百香果', note:'七夕限定，百香果特调+情侣套餐', review:''},
+  {id:'a18',name:'夜宵·烧烤收官季',  cat:'supper',  start:'2026-08-01',end:'2026-09-15', status:'confirmed', priority:'mid',  prep:1, ingredient:'',       note:'夜宵旺季收尾，烧烤+啤酒组合', review:''},
+  {id:'a19',name:'螃蟹季正餐专题',    cat:'meal',    start:'2026-09-15',end:'2026-10-15', status:'planning',  priority:'high', prep:3, ingredient:'螃蟹',   note:'中秋+国庆双节，螃蟹宴套餐', review:''},
+  {id:'a20',name:'中秋柚子甜品礼盒',  cat:'dessert', start:'2026-09-20',end:'2026-09-26', status:'planning',  priority:'mid',  prep:2, ingredient:'柚子',   note:'中秋礼盒，柚子主题', review:''},
+  {id:'a21',name:'重阳糕·传统甜品',  cat:'dessert', start:'2026-10-14',end:'2026-10-18', status:'planning',  priority:'mid',  prep:2, ingredient:'',       note:'重阳节传统重阳糕', review:''},
+  {id:'a22',name:'板栗秋季烘焙季',    cat:'dessert', start:'2026-10-01',end:'2026-10-31', status:'planning',  priority:'mid',  prep:2, ingredient:'板栗',   note:'板栗蛋糕/板栗拿铁', review:''},
+  {id:'a23',name:'双11暖冬火锅节',    cat:'meal',    start:'2026-11-05',end:'2026-11-15', status:'planning',  priority:'high', prep:3, ingredient:'羊肉',   note:'双11大促，火锅套餐预售', review:''},
+  {id:'a24',name:'橙香拿铁冬季限定',  cat:'coffee',  start:'2026-11-01',end:'2026-11-30', status:'planning',  priority:'mid',  prep:2, ingredient:'橙子',   note:'橙子拿铁，冬季暖饮主推', review:''},
+  {id:'a25',name:'冬至汤圆专题',      cat:'dessert', start:'2026-12-20',end:'2026-12-24', status:'planning',  priority:'mid',  prep:2, ingredient:'',       note:'冬至传统汤圆', review:''},
+  {id:'a26',name:'双12砂糖橘奶茶',    cat:'milk',    start:'2026-12-10',end:'2026-12-15', status:'planning',  priority:'mid',  prep:1, ingredient:'砂糖橘', note:'年末收官，砂糖橘奶茶限定回归', review:''},
+  {id:'a27',name:'圣诞冬日甜品季',    cat:'dessert', start:'2026-12-20',end:'2026-12-31', status:'planning',  priority:'high', prep:2, ingredient:'',       note:'圣诞主题甜品+跨年活动', review:''},
+];
+
+// ══════════════════════════════════════════════════════
+//  localStorage
+// ══════════════════════════════════════════════════════
+const ACT_KEY = 'cat52_activities_v2';
+
+function loadActivities() {
+  try { const r = localStorage.getItem(ACT_KEY); return r ? JSON.parse(r) : null; }
+  catch { return null; }
+}
+
+function saveActivities(arr) { localStorage.setItem(ACT_KEY, JSON.stringify(arr)); }
+
+let activities = loadActivities() || JSON.parse(JSON.stringify(DEFAULT_ACTIVITIES));
+
+// ══════════════════════════════════════════════════════
+//  工具函数
+// ══════════════════════════════════════════════════════
+function pad(n) { return String(n).padStart(2,'0'); }
+
+// 获取某年第 w 周的起止日期（ISO周，周一起）
+function getWeekRange(year, week) {
+  const jan4 = new Date(year, 0, 4);
+  const startOfW1 = new Date(jan4);
+  startOfW1.setDate(jan4.getDate() - ((jan4.getDay() + 6) % 7));
+  const start = new Date(startOfW1);
+  start.setDate(startOfW1.getDate() + (week - 1) * 7);
+  const end = new Date(start);
+  end.setDate(start.getDate() + 6);
+  return { start, end };
+}
+
+// 获取日期所在周数
+function getWeekNumber(date) {
+  const d = new Date(date);
+  d.setHours(0,0,0,0);
+  d.setDate(d.getDate() + 3 - (d.getDay() + 6) % 7);
+  const week1 = new Date(d.getFullYear(), 0, 4);
+  return 1 + Math.round(((d - week1) / 86400000 - 3 + (week1.getDay() + 6) % 7) / 7);
+}
+
+// 获取某年总周数
+function weeksInYear(year) {
+  const dec28 = new Date(year, 11, 28);
+  return getWeekNumber(dec28);
+}
+
+const TOTAL_WEEKS = weeksInYear(YEAR); // 52 or 53
+
+function getClimateForWeek(region, week) {
+  const zones = CLIMATE_ZONES[region] || CLIMATE_ZONES.south;
+  return zones.find(z => week >= z.weeks[0] && week <= z.weeks[1]) || zones[zones.length - 1];
+}
+
+function weekToMonth(week) {
+  const { start } = getWeekRange(YEAR, week);
+  return start.getMonth() + 1;
+}
+
+function actOverlapsWeek(act, week) {
+  const { start: ws, end: we } = getWeekRange(YEAR, week);
+  const as = new Date(act.start + 'T00:00:00');
+  const ae = new Date(act.end   + 'T00:00:00');
+  return as <= we && ae >= ws;
+}
+
+function actStartWeek(act) { return getWeekNumber(new Date(act.start + 'T00:00:00')); }
+function actEndWeek(act)   { return getWeekNumber(new Date(act.end   + 'T00:00:00')); }
+
+// ══════════════════════════════════════════════════════
+//  气候色带
+// ══════════════════════════════════════════════════════
+function renderClimateStrip(region) {
+  const strip  = document.getElementById('climate-strip');
+  const legend = document.getElementById('climate-legend');
+  const zones  = CLIMATE_ZONES[region];
+  strip.innerHTML = '';
+  legend.innerHTML = '';
+
+  zones.forEach(z => {
+    const span = z.weeks[1] - z.weeks[0] + 1;
+    const pct  = (span / TOTAL_WEEKS * 100).toFixed(2);
+    const seg  = document.createElement('div');
+    seg.className = 'climate-seg';
+    seg.style.cssText = `width:${pct}%;background:${z.color}33;border-right:1px solid ${z.color}66;color:${z.color};filter:brightness(0.7);`;
+    seg.title = `${z.emoji}${z.name}（第${z.weeks[0]}-${z.weeks[1]}周）`;
+    seg.textContent = span >= 4 ? `${z.emoji}${z.name}` : z.emoji;
+    strip.appendChild(seg);
+
+    const li = document.createElement('div');
+    li.className = 'climate-legend-item';
+    li.innerHTML = `<div class="climate-legend-dot" style="background:${z.color}88;border:1px solid ${z.color}"></div>${z.emoji}${z.name}（W${z.weeks[0]}-W${z.weeks[1]}）`;
+    legend.appendChild(li);
+  });
+}
+
+// ══════════════════════════════════════════════════════
+//  空窗预警：某品类连续 ≥2 周无活动
+// ══════════════════════════════════════════════════════
+function getGapWeeks(cat, filter) {
+  const gaps = new Set();
+  const cats = filter === 'all' ? Object.keys(CAT_META) : [filter];
+  cats.forEach(c => {
+    if (cat !== 'all' && c !== cat) return;
+    let streak = 0;
+    let streakStart = 0;
+    for (let w = 1; w <= TOTAL_WEEKS; w++) {
+      const hasAct = activities.some(a => a.cat === c && actOverlapsWeek(a, w));
+      if (!hasAct) {
+        if (streak === 0) streakStart = w;
+        streak++;
+        if (streak >= 2) {
+          for (let i = streakStart; i <= w; i++) gaps.add(i);
+        }
+      } else {
+        streak = 0;
+      }
+    }
+  });
+  return gaps;
+}
+
+// ══════════════════════════════════════════════════════
+//  52周鸟瞰
+// ══════════════════════════════════════════════════════
+let activeRegion  = 'south';
+let activeFilter  = 'all';
+let activeWeek    = null;
+let activeMonth   = null; // 月份视图
+
+function renderOverview() {
+  const wrap       = document.getElementById('weeks-overview');
+  const monthWrap  = document.getElementById('month-labels');
+  wrap.innerHTML   = '';
+  monthWrap.innerHTML = '';
+
+  const now     = new Date();
+  const curWeek = now.getFullYear() === YEAR ? getWeekNumber(now) : -1;
+  const gapWeeks = getGapWeeks('all', activeFilter);
+
+  // 月份标签（每月第一周显示）
+  const monthShown = {};
+  const monthLabels = {};
+  for (let w = 1; w <= TOTAL_WEEKS; w++) {
+    const m = weekToMonth(w);
+    if (!monthShown[m]) { monthShown[m] = w; monthLabels[w] = m + '月'; }
+  }
+
+  for (let w = 1; w <= TOTAL_WEEKS; w++) {
+    const climate = getClimateForWeek(activeRegion, w);
+    const acts = activities.filter(a =>
+      actOverlapsWeek(a, w) &&
+      (activeFilter === 'all' || a.cat === activeFilter)
+    );
+    const isGap = gapWeeks.has(w) && activeFilter !== 'all';
+    const jieqi  = JIEQI_2026[w];
+    const holiday = HOLIDAYS_2026[w];
+
+    const cell = document.createElement('div');
+    cell.className = 'week-cell'
+      + (w === activeWeek  ? ' active'       : '')
+      + (w === curWeek     ? ' current-week' : '')
+      + (isGap             ? ' gap-warning'  : '');
+
+    const dots = acts.map(a =>
+      `<div class="week-dot" style="background:${CAT_META[a.cat]?.color||'#fff'}"></div>`
+    ).join('');
+
+    cell.innerHTML = `
+      <div class="week-num">W${w}</div>
+      <div class="week-dots">${dots}</div>
+      ${jieqi  ? `<div class="week-jieqi">${jieqi}</div>`   : ''}
+      ${holiday ? `<div class="week-holiday">${holiday}</div>` : ''}
+      <div class="week-climate-bar" style="background:${climate.color}55"></div>
+    `;
+
+    cell.addEventListener('click', () => {
+      if (activeWeek === w) {
+        activeWeek = null;
+        document.getElementById('week-detail-wrap').innerHTML = '';
+      } else {
+        activeWeek = w;
+        activeMonth = null;
+        document.getElementById('month-view-wrap').innerHTML = '';
+        renderWeekDetail(w);
+      }
+      renderOverview();
+    });
+
+    wrap.appendChild(cell);
+
+    // 月份标签（只在每月第一周渲染，其余跳过）
+    if (monthLabels[w]) {
+      const m = weekToMonth(w);
+      const mlCell = document.createElement('div');
+      mlCell.className = 'month-label-cell' + (activeMonth === m ? ' active' : '');
+      mlCell.textContent = monthLabels[w];
+      mlCell.dataset.week = w;
+      mlCell.dataset.month = m;
+      mlCell.addEventListener('click', () => {
+        if (activeMonth === m) {
+          activeMonth = null;
+          document.getElementById('month-view-wrap').innerHTML = '';
+        } else {
+          activeMonth = m;
+          activeWeek = null;
+          document.getElementById('week-detail-wrap').innerHTML = '';
+          renderMonthView(m);
+        }
+        renderOverview();
+        setTimeout(() => document.getElementById('month-view-wrap').firstChild?.scrollIntoView({ behavior:'smooth', block:'start' }), 50);
+      });
+      monthWrap.appendChild(mlCell);
+    }
+  }
+}
+
+// ══════════════════════════════════════════════════════
+//  周详情
+// ══════════════════════════════════════════════════════
+function renderWeekDetail(week) {
+  const wrap = document.getElementById('week-detail-wrap');
+  const { start, end } = getWeekRange(YEAR, week);
+  const climate = getClimateForWeek(activeRegion, week);
+  const month   = weekToMonth(week);
+  const ings    = (INGREDIENTS[activeRegion] || INGREDIENTS.south)[month] || [];
+  const tempArr = (TEMP_REF[activeRegion] || TEMP_REF.east)[month - 1] || [10, 25];
+  const jieqi   = JIEQI_2026[week];
+  const holiday = HOLIDAYS_2026[week];
+
+  // 夜宵旺季提示
+  const supperPeak = SUPPER_PEAK[activeRegion] || [18, 38];
+  const isSupperPeak = week >= supperPeak[0] && week <= supperPeak[1];
+
+  // 气温色
+  const avgTemp = (tempArr[0] + tempArr[1]) / 2;
+  const tempColor = avgTemp >= 28 ? '#ef5350' : avgTemp >= 20 ? '#ffb74d' : avgTemp >= 10 ? '#81c784' : '#7986cb';
+  const tempPct   = Math.min(100, Math.max(0, ((avgTemp - 0) / 40) * 100));
+  const tempHint  = avgTemp >= 28 ? '☀️ 高温期，冷饮/夜宵需求旺盛' : avgTemp >= 20 ? '🌤 适温期，冷热饮均衡' : avgTemp >= 10 ? '🌱 凉爽期，暖饮需求上升' : '❄️ 寒冷期，火锅/暖饮主推';
+
+  // 该周活动（按筛选）
+  const cats = activeFilter === 'all' ? Object.keys(CAT_META) : [activeFilter];
+  const weekActs = activities.filter(a =>
+    actOverlapsWeek(a, week) &&
+    (activeFilter === 'all' || a.cat === activeFilter)
+  );
+
+  // 空窗预警
+  const gapCats = cats.filter(c => {
+    const hasAct = activities.some(a => a.cat === c && actOverlapsWeek(a, week));
+    if (hasAct) return false;
+    // 检查前后各1周也没有
+    const hasPrev = activities.some(a => a.cat === c && actOverlapsWeek(a, week - 1));
+    const hasNext = activities.some(a => a.cat === c && actOverlapsWeek(a, week + 1));
+    return !hasPrev && !hasNext;
+  });
+
+  // 节气/节日行
+  const eventRowHtml = (jieqi || holiday || isSupperPeak) ? `
+    <div class="event-row">
+      ${jieqi   ? `<span class="jieqi-tag">✦ ${jieqi}</span>` : ''}
+      ${holiday ? `<span class="holiday-tag">🎉 ${holiday}</span>` : ''}
+      ${isSupperPeak ? `<span class="jieqi-tag" style="background:rgba(255,138,101,0.08);border-color:rgba(200,80,0,0.25);color:rgba(160,60,0,0.9)">🌙 夜宵旺季</span>` : ''}
+    </div>` : '';
+
+  // 饮食洞察行
+  const insight = FOOD_INSIGHTS[week];
+  const foodInsightHtml = insight ? `
+    <div class="food-insight-row">
+      <div class="food-insight-title">🍴 饮食洞察</div>
+      <div style="flex:1">
+        <div class="food-insight-tags">
+          ${insight.foods.map(f => `<span class="food-insight-tag">${f}</span>`).join('')}
+        </div>
+        <div class="food-insight-tip" style="margin-top:5px">${insight.tip}</div>
+      </div>
+    </div>` : '';
+
+  // 食材行
+  const ingTagsHtml = ings.map(ing => {
+    const urgent = ing.window <= 4;
+    return `<span class="ing-tag ${ing.type}${urgent ? ' urgent' : ''}" data-ing="${ing.name}">
+      ${ing.name}<span class="ing-window">${ing.window}周</span>
+    </span>`;
+  }).join('');
+
+  // 甘特图
+  const totalDays = 7;
+  const wStartMs  = start.getTime();
+
+  const rowsHtml = cats.map(cat => {
+    const meta   = CAT_META[cat];
+    const catAct = weekActs.find(a => a.cat === cat);
+
+    let trackContent = '';
+    if (catAct) {
+      // 活动在本周的起止偏移（0-7天）
+      const as = new Date(catAct.start + 'T00:00:00');
+      const ae = new Date(catAct.end   + 'T00:00:00');
+      const dayStart = Math.max(0, Math.round((as - start) / 86400000));
+      const dayEnd   = Math.min(7, Math.round((ae - start) / 86400000) + 1);
+      const leftPct  = (dayStart / totalDays * 100).toFixed(1);
+      const widthPct = ((dayEnd - dayStart) / totalDays * 100).toFixed(1);
+      const statusColor   = STATUS_META[catAct.status]?.color || '#fff';
+      const priorityColor = PRIORITY_META[catAct.priority]?.color || '#fff';
+      const opacity       = PRIORITY_META[catAct.priority]?.opacity || 0.85;
+
+      // 备货带
+      const prepWeeks = catAct.prep || 0;
+      const prepDays  = prepWeeks * 7;
+      const prepStart = Math.max(0, dayStart - prepDays);
+      const prepWidth = dayStart - prepStart;
+      const prepHtml  = prepWidth > 0 ? `
+        <div class="prep-band" style="left:${(prepStart/totalDays*100).toFixed(1)}%;width:${(prepWidth/totalDays*100).toFixed(1)}%;background:${meta.color}33"></div>` : '';
+
+      trackContent = `
+        ${prepHtml}
+        <div class="act-block" style="left:${leftPct}%;width:${widthPct}%;background:${meta.color};opacity:${opacity}"
+             data-aid="${catAct.id}">
+          <div class="act-priority-stripe" style="background:${priorityColor}88"></div>
+          <div class="act-label">${catAct.name}</div>
+          <div class="act-status-badge" style="background:${statusColor}cc">${STATUS_META[catAct.status]?.label||''}</div>
+        </div>`;
+    } else {
+      // 查找该周该品类的建议文案（节日洞察优先，其次气温通用建议）
+      const suggMap = CAT_SUGGESTIONS[week];
+      let suggText = suggMap ? (suggMap[cat] || '') : '';
+      // 气温通用回退建议
+      if (!suggText) {
+        if (avgTemp >= 28) {
+          if (cat === 'milk' || cat === 'dessert') suggText = '高温期：冷饮/冰品上新';
+          else if (cat === 'supper') suggText = '夜宵旺季：烧烤/小龙虾';
+          else if (cat === 'coffee') suggText = '冷萃/冰美式主推';
+        } else if (avgTemp <= 8) {
+          if (cat === 'meal') suggText = '寒冷期：火锅/暖锅套餐';
+          else if (cat === 'milk' || cat === 'coffee') suggText = '暖饮/热饮主推';
+          else if (cat === 'dessert') suggText = '暖冬甜品/热饮礼盒';
+        }
+      }
+      trackContent = `
+        <div class="gantt-empty" data-week="${week}" data-cat="${cat}"
+             data-wstart="${start.toISOString().slice(0,10)}"
+             data-wend="${end.toISOString().slice(0,10)}">
+          ${suggText
+            ? `<span class="sugg-hint">💡 ${suggText}</span>`
+            : `<span class="add-hint">＋ 新增活动</span>`}
+        </div>`;
+    }
+
+    return `
+      <div class="gantt-row">
+        <div class="gantt-cat-label">
+          <div class="gantt-cat-dot" style="background:${meta.color}"></div>
+          ${meta.emoji} ${meta.label}
+        </div>
+        <div class="gantt-track">${trackContent}</div>
+      </div>`;
+  }).join('');
+
+  // 空窗预警条
+  const gapHtml = gapCats.length > 0 ? `
+    <div class="gap-warning-bar">
+      ⚠ 空窗预警：${gapCats.map(c => CAT_META[c].label).join('、')} 本周及前后均无活动，建议补充排期
+    </div>` : '';
+
+  const fmt = d => `${d.getMonth()+1}月${d.getDate()}日`;
+
+  wrap.innerHTML = `
+    <div class="week-detail" id="week-detail">
+      <div class="detail-header">
+        <div class="detail-week-name">第 ${week} 周</div>
+        <div class="detail-badge">${fmt(start)} — ${fmt(end)}</div>
+        <div class="detail-climate-badge" style="background:${climate.color}22;color:${climate.textColor};border:1px solid ${climate.color}44">
+          ${climate.emoji} ${climate.name}
+        </div>
+        <button class="detail-close" id="detail-close">✕</button>
+      </div>
+      ${eventRowHtml}
+      ${foodInsightHtml}
+      <div class="ingredients-row">
+        <div class="ing-title">🌱 应季食材</div>
+        <div style="flex:1">
+          <div class="ing-tags">${ingTagsHtml}</div>
+          <div class="ing-highlight-tip" id="ing-tip">📌 已标记重点食材，点击空轨道新增活动时可快速关联该食材</div>
+        </div>
+      </div>
+      <div class="temp-row">
+        <div class="temp-label">🌡 气温参考</div>
+        <div class="temp-bar-wrap"><div class="temp-bar" style="width:${tempPct}%;background:${tempColor}"></div></div>
+        <div class="temp-value">${tempArr[0]}°~${tempArr[1]}°C</div>
+        <div class="temp-hint">${tempHint}</div>
+      </div>
+      <div class="gantt-wrap">
+        <div class="gantt-rows">${rowsHtml}</div>
+      </div>
+      ${gapHtml}
+    </div>
+  `;
+
+  // 关闭
+  document.getElementById('detail-close').addEventListener('click', () => {
+    activeWeek = null;
+    wrap.innerHTML = '';
+    renderOverview();
+  });
+
+  // 点击活动块 → 编辑
+  wrap.querySelectorAll('.act-block').forEach(el => {
+    el.addEventListener('click', () => openModal('edit', { aid: el.dataset.aid }));
+  });
+
+  // 点击空轨道 → 新增（自动带入已标记食材）
+  wrap.querySelectorAll('.gantt-empty').forEach(el => {
+    el.addEventListener('click', () => {
+      const highlighted = [...wrap.querySelectorAll('.ing-tag.highlighted')].map(t => t.dataset.ing).join('、');
+      openModal('add', {
+        cat:        el.dataset.cat,
+        start:      el.dataset.wstart,
+        end:        el.dataset.wend,
+        ingredient: highlighted || '',
+      });
+    });
+  });
+
+  // 食材高亮
+  wrap.querySelectorAll('.ing-tag').forEach(tag => {
+    tag.addEventListener('click', () => {
+      tag.classList.toggle('highlighted');
+      const tip = document.getElementById('ing-tip');
+      if (tip) {
+        const anyHighlighted = wrap.querySelectorAll('.ing-tag.highlighted').length > 0;
+        tip.classList.toggle('show', anyHighlighted);
+        if (anyHighlighted) {
+          const names = [...wrap.querySelectorAll('.ing-tag.highlighted')].map(t => t.dataset.ing).join('、');
+          tip.textContent = `📌 已标记：${names}。点击空轨道新增活动时可快速关联该食材`;
+        }
+      }
+    });
+  });
+
+  // 滚动
+  setTimeout(() => {
+    document.getElementById('week-detail')?.scrollIntoView({ behavior:'smooth', block:'start' });
+  }, 50);
+}
+
+// ══════════════════════════════════════════════════════
+//  月份视图
+// ══════════════════════════════════════════════════════
+function renderMonthView(month) {
+  const wrap = document.getElementById('month-view-wrap');
+
+  // 找出该月包含的所有周
+  const monthWeeks = [];
+  for (let w = 1; w <= TOTAL_WEEKS; w++) {
+    if (weekToMonth(w) === month) monthWeeks.push(w);
+  }
+  if (!monthWeeks.length) { wrap.innerHTML = ''; return; }
+
+  const MONTH_NAMES = ['一月','二月','三月','四月','五月','六月','七月','八月','九月','十月','十一月','十二月'];
+  const cats = activeFilter === 'all' ? Object.keys(CAT_META) : [activeFilter];
+
+  const weekBlocksHtml = monthWeeks.map(w => {
+    const { start, end } = getWeekRange(YEAR, w);
+    const climate = getClimateForWeek(activeRegion, w);
+    const jieqi   = JIEQI_2026[w];
+    const holiday = HOLIDAYS_2026[w];
+    const insight = FOOD_INSIGHTS[w];
+    const weekActs = activities.filter(a =>
+      actOverlapsWeek(a, w) && (activeFilter === 'all' || a.cat === activeFilter)
+    );
+    const month2 = weekToMonth(w);
+    const tempArr = (TEMP_REF[activeRegion] || TEMP_REF.east)[month2 - 1] || [10, 25];
+    const avgTemp = (tempArr[0] + tempArr[1]) / 2;
+
+    const fmt = d => `${d.getMonth()+1}/${d.getDate()}`;
+
+    // 标签
+    const tagHtml = [
+      jieqi   ? `<span class="jieqi-tag" style="font-size:0.6rem;padding:1px 6px">✦ ${jieqi}</span>` : '',
+      holiday ? `<span class="holiday-tag" style="font-size:0.6rem;padding:1px 6px">🎉 ${holiday}</span>` : '',
+    ].filter(Boolean).join('');
+
+    // 甘特行
+    const totalDays = 7;
+    const rowsHtml = cats.map(cat => {
+      const meta   = CAT_META[cat];
+      const catAct = weekActs.find(a => a.cat === cat);
+      let trackHtml = '';
+      if (catAct) {
+        const as = new Date(catAct.start + 'T00:00:00');
+        const ae = new Date(catAct.end   + 'T00:00:00');
+        const dayStart = Math.max(0, Math.round((as - start) / 86400000));
+        const dayEnd   = Math.min(7, Math.round((ae - start) / 86400000) + 1);
+        const leftPct  = (dayStart / totalDays * 100).toFixed(1);
+        const widthPct = ((dayEnd - dayStart) / totalDays * 100).toFixed(1);
+        const opacity  = PRIORITY_META[catAct.priority]?.opacity || 0.85;
+        // 备货带
+        const prepWeeks = catAct.prep || 0;
+        const prepDays  = prepWeeks * 7;
+        const prepStart = Math.max(0, dayStart - prepDays);
+        const prepWidth = dayStart - prepStart;
+        const prepHtml  = prepWidth > 0 ? `<div class="prep-band" style="left:${(prepStart/totalDays*100).toFixed(1)}%;width:${(prepWidth/totalDays*100).toFixed(1)}%;background:${meta.color}33"></div>` : '';
+        trackHtml = `<div class="month-gantt-track">
+          ${prepHtml}
+          <div class="month-act-block" style="left:${leftPct}%;width:${widthPct}%;background:${meta.color};opacity:${opacity}" data-aid="${catAct.id}">
+            <span class="month-act-label">${catAct.name}</span>
+          </div>
+        </div>`;
+      } else {
+        const suggMap = CAT_SUGGESTIONS[w];
+        let suggText = suggMap ? (suggMap[cat] || '') : '';
+        if (!suggText) {
+          if (avgTemp >= 28) {
+            if (cat === 'milk' || cat === 'dessert') suggText = '高温期：冷饮/冰品上新';
+            else if (cat === 'supper') suggText = '夜宵旺季：烧烤/小龙虾';
+            else if (cat === 'coffee') suggText = '冷萃/冰美式主推';
+          } else if (avgTemp <= 8) {
+            if (cat === 'meal') suggText = '寒冷期：火锅/暖锅套餐';
+            else if (cat === 'milk' || cat === 'coffee') suggText = '暖饮/热饮主推';
+            else if (cat === 'dessert') suggText = '暖冬甜品/热饮礼盒';
+          }
+        }
+        trackHtml = `<div class="month-empty-track" data-week="${w}" data-cat="${cat}"
+          data-wstart="${start.toISOString().slice(0,10)}" data-wend="${end.toISOString().slice(0,10)}">
+          ${suggText ? `<span class="month-sugg">💡 ${suggText}</span>` : '<span style="font-size:0.6rem;color:rgba(0,0,0,0.25)">＋ 新增</span>'}
+        </div>`;
+      }
+      return `<div class="month-gantt-row">
+        <div class="month-gantt-label">
+          <div class="gantt-cat-dot" style="background:${meta.color};width:6px;height:6px;border-radius:50%;flex-shrink:0"></div>
+          ${meta.emoji} ${meta.label}
+        </div>
+        ${trackHtml}
+      </div>`;
+    }).join('');
+
+    // 洞察摘要
+    const insightHtml = insight ? `<div style="padding:4px 20px 6px;font-size:0.62rem;color:rgba(140,80,0,0.75);background:rgba(255,200,50,0.06);border-top:1px solid rgba(200,140,0,0.1)">🍴 ${insight.tip}</div>` : '';
+
+    return `
+      <div class="month-week-block">
+        <div class="month-week-header" data-week="${w}">
+          <span class="month-week-label">W${w}</span>
+          <span class="month-week-dates">${fmt(start)} — ${fmt(end)}</span>
+          <span style="font-size:0.62rem;color:rgba(0,0,0,0.35);margin-left:4px">${climate.emoji}${climate.name}</span>
+          <div class="month-week-tags">${tagHtml}</div>
+        </div>
+        <div class="month-week-gantt">${rowsHtml}</div>
+        ${insightHtml}
+      </div>`;
+  }).join('');
+
+  wrap.innerHTML = `
+    <div class="month-view" id="month-view">
+      <div class="month-view-header">
+        <span style="font-size:1.2rem">${['🎊','🌸','🌸','🌸','🌺','☀️','☀️','☀️','🍂','🍂','❄️','🎄'][month-1]}</span>
+        <span class="month-view-title">${month}月全月规划</span>
+        <span style="font-size:0.72rem;color:var(--text-mid);margin-left:4px">${monthWeeks.length}周 · 点击周次可跳转详情</span>
+        <button class="month-view-close" id="month-view-close">✕</button>
+      </div>
+      ${weekBlocksHtml}
+    </div>`;
+
+  // 关闭
+  document.getElementById('month-view-close').addEventListener('click', () => {
+    activeMonth = null;
+    wrap.innerHTML = '';
+    renderOverview();
+  });
+
+  // 点击周次标题 → 跳转周详情
+  wrap.querySelectorAll('.month-week-header').forEach(el => {
+    el.addEventListener('click', () => {
+      const w2 = parseInt(el.dataset.week);
+      activeWeek = w2;
+      activeMonth = null;
+      wrap.innerHTML = '';
+      renderOverview();
+      renderWeekDetail(w2);
+      setTimeout(() => document.getElementById('week-detail')?.scrollIntoView({ behavior:'smooth', block:'start' }), 50);
+    });
+  });
+
+  // 点击活动块 → 编辑
+  wrap.querySelectorAll('.month-act-block').forEach(el => {
+    el.addEventListener('click', e => {
+      e.stopPropagation();
+      openModal('edit', { aid: el.dataset.aid });
+    });
+  });
+
+  // 点击空轨道 → 新增
+  wrap.querySelectorAll('.month-empty-track').forEach(el => {
+    el.addEventListener('click', e => {
+      e.stopPropagation();
+      openModal('add', { cat: el.dataset.cat, start: el.dataset.wstart, end: el.dataset.wend });
+    });
+  });
+}
+
+// ══════════════════════════════════════════════════════
+//  弹窗
+// ══════════════════════════════════════════════════════
+let modalMode = 'add';
+let editingId = null;
+
+function openModal(mode, opts = {}) {
+  modalMode = mode; editingId = null;
+  document.getElementById('f-name').value = '';
+  document.getElementById('f-start').value = '';
+  document.getElementById('f-end').value = '';
+  document.getElementById('f-ingredient').value = '';
+  document.getElementById('f-note').value = '';
+  document.getElementById('f-review').value = '';
+  document.getElementById('f-prep').value = '2';
+  document.getElementById('btn-delete-act').style.display = 'none';
+  setStatusOpt('planning'); setPriorityOpt('mid');
+
+  if (mode === 'add') {
+    document.getElementById('modal-title-text').textContent = '新增活动';
+    if (opts.cat)        document.getElementById('f-cat').value        = opts.cat;
+    if (opts.start)      document.getElementById('f-start').value      = opts.start;
+    if (opts.end)        document.getElementById('f-end').value        = opts.end;
+    if (opts.ingredient) document.getElementById('f-ingredient').value = opts.ingredient;
+  } else {
+    document.getElementById('modal-title-text').textContent = '编辑活动';
+    document.getElementById('btn-delete-act').style.display = 'block';
+    const act = activities.find(a => a.id === opts.aid);
+    if (act) {
+      editingId = act.id;
+      document.getElementById('f-name').value       = act.name;
+      document.getElementById('f-cat').value        = act.cat;
+      document.getElementById('f-start').value      = act.start;
+      document.getElementById('f-end').value        = act.end;
+      document.getElementById('f-ingredient').value = act.ingredient || '';
+      document.getElementById('f-note').value       = act.note || '';
+      document.getElementById('f-review').value     = act.review || '';
+      document.getElementById('f-prep').value       = act.prep ?? 2;
+      setStatusOpt(act.status); setPriorityOpt(act.priority);
+    }
+  }
+  document.getElementById('modal-overlay').classList.add('open');
+  setTimeout(() => document.getElementById('f-name').focus(), 80);
+}
+
+function closeModal() { document.getElementById('modal-overlay').classList.remove('open'); }
+
+function setStatusOpt(val) {
+  document.querySelectorAll('.status-opt').forEach(el => el.classList.toggle('selected', el.dataset.status === val));
+}
+
+function setPriorityOpt(val) {
+  document.querySelectorAll('.priority-opt').forEach(el => el.classList.toggle('selected', el.dataset.p === val));
+}
+
+function getSelectedStatus()   { return document.querySelector('.status-opt.selected')?.dataset.status   || 'planning'; }
+function getSelectedPriority() { return document.querySelector('.priority-opt.selected')?.dataset.p || 'mid'; }
+
+function initModal() {
+  document.getElementById('modal-close').addEventListener('click', closeModal);
+  document.getElementById('modal-cancel').addEventListener('click', closeModal);
+  document.getElementById('modal-overlay').addEventListener('click', e => {
+    if (e.target === document.getElementById('modal-overlay')) closeModal();
+  });
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
+
+  document.getElementById('status-opts').addEventListener('click', e => {
+    const opt = e.target.closest('.status-opt');
+    if (opt) setStatusOpt(opt.dataset.status);
+  });
+
+  document.getElementById('priority-opts').addEventListener('click', e => {
+    const opt = e.target.closest('.priority-opt');
+    if (opt) setPriorityOpt(opt.dataset.p);
+  });
+
+  document.getElementById('btn-delete-act').addEventListener('click', () => {
+    if (editingId && confirm('确定删除这个活动吗？')) {
+      activities = activities.filter(a => a.id !== editingId);
+      saveActivities(activities);
+      closeModal();
+      renderOverview();
+      if (activeWeek) renderWeekDetail(activeWeek);
+    }
+  });
+
+  document.getElementById('modal-confirm').addEventListener('click', () => {
+    const name  = document.getElementById('f-name').value.trim();
+    const cat   = document.getElementById('f-cat').value;
+    const start = document.getElementById('f-start').value;
+    const end   = document.getElementById('f-end').value;
+    const ingredient = document.getElementById('f-ingredient').value.trim();
+    const note   = document.getElementById('f-note').value.trim();
+    const review = document.getElementById('f-review').value.trim();
+    const prep   = parseInt(document.getElementById('f-prep').value) || 0;
+    const status   = getSelectedStatus();
+    const priority = getSelectedPriority();
+
+    if (!name || !start || !end) { alert('请填写活动名称和起止日期'); return; }
+    if (start > end) { alert('开始日期不能晚于结束日期'); return; }
+
+    if (modalMode === 'add') {
+      activities.push({ id:'a'+Date.now(), name, cat, start, end, status, priority, prep, ingredient, note, review });
+    } else {
+      const idx = activities.findIndex(a => a.id === editingId);
+      if (idx !== -1) activities[idx] = { ...activities[idx], name, cat, start, end, status, priority, prep, ingredient, note, review };
+    }
+
+    saveActivities(activities);
+    closeModal();
+    renderOverview();
+    if (activeWeek) renderWeekDetail(activeWeek);
+  });
+}
+
+// ══════════════════════════════════════════════════════
+//  筛选 & 地区
+// ══════════════════════════════════════════════════════
+function initControls() {
+  document.getElementById('filter-bar').addEventListener('click', e => {
+    const btn = e.target.closest('.filter-btn');
+    if (!btn) return;
+    activeFilter = btn.dataset.cat;
+    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    renderOverview();
+    if (activeWeek) renderWeekDetail(activeWeek);
+  });
+
+  document.getElementById('region-tabs').addEventListener('click', e => {
+    const tab = e.target.closest('.region-tab');
+    if (!tab) return;
+    activeRegion = tab.dataset.region;
+    document.querySelectorAll('.region-tab').forEach(t => t.classList.remove('active'));
+    tab.classList.add('active');
+    // 全国模式隐藏气候色带
+    const climateSection = document.getElementById('climate-section');
+    if (activeRegion === 'national') {
+      climateSection.style.display = 'none';
+    } else {
+      climateSection.style.display = '';
+      renderClimateStrip(activeRegion);
+    }
+    renderOverview();
+    if (activeWeek) renderWeekDetail(activeWeek);
+    if (activeMonth) renderMonthView(activeMonth);
+  });
+}
+
+// ══════════════════════════════════════════════════════
+//  星空
+// ══════════════════════════════════════════════════════
+(function() {
+  const canvas = document.getElementById('stars-canvas');
+  const ctx = canvas.getContext('2d');
+  let stars = [];
+  function resize() { canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
+  function createStars(n) {
+    stars = [];
+    for (let i = 0; i < n; i++) stars.push({ x:Math.random()*canvas.width, y:Math.random()*canvas.height, r:Math.random()*1.0+0.2, speed:Math.random()*0.003+0.001, phase:Math.random()*Math.PI*2 });
+  }
+  function draw(t) {
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    for (const s of stars) {
+      const a = 0.18 + 0.5*Math.abs(Math.sin(t*s.speed+s.phase));
+      ctx.beginPath(); ctx.arc(s.x,s.y,s.r,0,Math.PI*2);
+      ctx.fillStyle = `rgba(255,255,255,${a.toFixed(2)})`; ctx.fill();
+    }
+    requestAnimationFrame(draw);
+  }
+  resize(); createStars(100);
+  window.addEventListener('resize', () => { resize(); createStars(100); });
+  requestAnimationFrame(draw);
+})();
+
+// ══════════════════════════════════════════════════════
+//  初始化
+// ══════════════════════════════════════════════════════
+function init() {
+  renderClimateStrip(activeRegion);
+  renderOverview();
+  initControls();
+  initModal();
+
+  // 默认展开当前周
+  const now = new Date();
+  if (now.getFullYear() === YEAR) {
+    activeWeek = getWeekNumber(now);
+    renderOverview();
+    renderWeekDetail(activeWeek);
+  }
+}
+
+init();
+</script>
+</body>
+</html>
